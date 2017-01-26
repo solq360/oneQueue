@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 
+import com.eyu.onequeue.MQServerConfig;
 import com.eyu.onequeue.util.PoolUtil;
 
 public class PushMonitor implements InitializingBean {
@@ -33,6 +34,11 @@ public class PushMonitor implements InitializingBean {
 		    execute(() -> {
 			entry.getValue().push();
 		    });
+		}
+		try {
+		    Thread.sleep(MQServerConfig.PUSH_MESSAGE_INTERVAL);
+		} catch (InterruptedException e) {
+		    e.printStackTrace();
 		}
 	    }
 	}

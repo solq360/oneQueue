@@ -23,6 +23,11 @@ public interface MQServerConfig {
     final int STORE_QUEUE_BUFFER_SIZE = 9000;
     /** 写入文件 队列边界 **/
     final int STORE_QUEUE_PERSIST_SIZE = (int) (STORE_QUEUE_BUFFER_SIZE * 0.7);
+    
+    
+    //PUSH    
+    final int PUSH_MESSAGE_INTERVAL = 100;
+
 
     static String getStoreRootPath(String topic) {
 	return STORE_ROOT_PATH + topic + "/";
