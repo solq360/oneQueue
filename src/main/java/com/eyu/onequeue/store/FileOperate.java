@@ -1,4 +1,4 @@
-package com.eyu.onequeue.store.model;
+package com.eyu.onequeue.store;
 
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;

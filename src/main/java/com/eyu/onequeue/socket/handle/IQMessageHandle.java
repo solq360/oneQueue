@@ -6,7 +6,7 @@ import com.eyu.onequeue.protocol.model.QMessage;
 
 public interface IQMessageHandle {
 
-    public void onSucceed(String topic, List<QMessage<?, ?>> qMessages);
+    public void onSucceed(String topic, List<QMessage<?,?>> qMessages);
 
-    public void onError(String topic, List<QMessage<?, ?>> qMessages, Exception e);
+    public void onError(String topic, List<QMessage<?,?>> qMessages, Exception e);
 }

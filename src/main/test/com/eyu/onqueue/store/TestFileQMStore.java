@@ -55,7 +55,7 @@ public class TestFileQMStore {
 	// 应用层处理
 	IQMStore store = FileQMStore.of(topic, fileIndexer);
 
-	QResult l = store.query(QQuery.of(0));
+	QResult l = store.query(QQuery.of(topic,0));
 	for (byte[] b : l.getBatchData()) {
 	    List<QMessage> t = SerialUtil.readArray(SerialUtil.unZip(b), QMessage.class);
 	    System.out.println(t.size());

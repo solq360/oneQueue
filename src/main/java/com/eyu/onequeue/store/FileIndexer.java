@@ -12,7 +12,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import com.eyu.onequeue.MQServerConfig;
-import com.eyu.onequeue.store.model.FileOperate;
 import com.eyu.onequeue.store.model.QQuery;
 import com.eyu.onequeue.store.model.QResult;
 import com.eyu.onequeue.util.FileUtil;
@@ -94,7 +93,7 @@ public class FileIndexer {
     }
 
     public void close() {
-	persist();
+	wirteToBuffer();
 	foreachAndLockFileOperate(fileOperate -> FileUtil.close(fileOperate));
 	persistFileIndexer();
     }
@@ -156,7 +155,7 @@ public class FileIndexer {
 	    long t = Math.max(offset.get(), fileOperate.toOffset());
 	    offset.set(t);
 	});
-	return QResult.of(offset.get(), list);
+	return QResult.of(topic,offset.get(), list);
     }
     //////////////////////////////////////////////////////////////////////
 
