@@ -38,7 +38,16 @@ public class SerialUtil {
 	    throw new RuntimeException(e);
 	}
     }
-
+    
+    public static <T> T readValueAsFile(String fileName, TypeReference<T> valueTypeRef) {
+	try {
+	    FileUtil.createDirs(fileName);
+	    return MAPPER_CONVERT.readValue(new File(fileName), valueTypeRef);
+	} catch (Exception e) {
+	    throw new RuntimeException(e);
+	}
+    }
+ 
     public static void writeValueAsFile(String fileName, Object value) {
 	try {
 	    FileUtil.createDirs(fileName);

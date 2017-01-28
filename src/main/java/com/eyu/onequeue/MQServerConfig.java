@@ -22,11 +22,14 @@ public interface MQServerConfig {
     /** 消息缓冲队列初始化长度 根据业务每秒支持量设置 **/
     final int STORE_QUEUE_BUFFER_SIZE = 9000;
     /** 写入文件 队列边界 **/
-    final int STORE_QUEUE_PERSIST_SIZE = (int) (STORE_QUEUE_BUFFER_SIZE * 0.7);
+    final int STORE_QUEUE_PERSIST_SIZE = (int) (STORE_QUEUE_BUFFER_SIZE * 0.9);
     
     
     //PUSH    
     final int PUSH_MESSAGE_INTERVAL = 100;
+	final String PUSH_PERSIST_FILE = "e:/qmdata/pushRecord";
+	/**多少分钟持久分推送记录**/
+	final long PUSH_PERSIST_INTERVAL = 1000*60*5;
 
 
     static String getStoreRootPath(String topic) {
