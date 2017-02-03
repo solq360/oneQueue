@@ -20,7 +20,10 @@ public class QResult {
      * topic
      */
     private String topic;
-    
+    /**
+     * batchData 就否原始数据
+     */
+    private boolean raw;
     
     public QPacket toPacket() {
 	QPacket ret = new QPacket();
@@ -41,8 +44,13 @@ public class QResult {
 	return topic;
     }
 
-    public static QResult of(String topic, long offset, List<byte[]> batchData) {
+    public boolean isRaw() {
+		return raw;
+	}
+
+	public static QResult of(String topic, boolean raw,long offset, List<byte[]> batchData) {
 	QResult ret = new QResult();
+	ret.raw = raw;
 	ret.topic = topic;
 	ret.offset = offset;
 	ret.batchData = batchData;

@@ -5,18 +5,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Service;
 
-import com.eyu.onequeue.MQServerConfig;
+import com.eyu.onequeue.QMServerConfig;
 import com.eyu.onequeue.socket.model.QNode;
 import com.eyu.onequeue.util.PoolUtil;
 import com.eyu.onequeue.util.SerialUtil;
@@ -46,13 +41,13 @@ public class PushMonitor implements InitializingBean {
 					});
 				}
 
-				if ((System.currentTimeMillis() - lastPersistRecord) > MQServerConfig.PUSH_PERSIST_INTERVAL) {
+				if ((System.currentTimeMillis() - lastPersistRecord) > QMServerConfig.PUSH_PERSIST_INTERVAL) {
 					lastPersistRecord = System.currentTimeMillis();
 					execute(() -> persist());
 				}
 
 				try {
-					Thread.sleep(MQServerConfig.PUSH_MESSAGE_INTERVAL);
+					Thread.sleep(QMServerConfig.PUSH_MESSAGE_INTERVAL);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -60,17 +55,8 @@ public class PushMonitor implements InitializingBean {
 		}
 	}, "processPushThread");
 
-	private static ExecutorService pool = new ThreadPoolExecutor(4, Runtime.getRuntime().availableProcessors() * 6, 1,
-			TimeUnit.MINUTES, new LinkedBlockingQueue<Runnable>(), new ThreadFactory() {
-				final AtomicInteger ai = new AtomicInteger(1);
-				ThreadGroup group = new ThreadGroup("PushMonitor");
-
-				@Override
-				public Thread newThread(Runnable r) {
-					Thread ret = new Thread(group, r, "" + ai.getAndIncrement(), 0);
-					return ret;
-				}
-			});
+	private static ExecutorService pool = PoolUtil.createPool(Runtime.getRuntime().availableProcessors() * 6, 60,
+			"PushMonitor");
 
 	public void registerNode(String topic, String groupId, QNode node) {
 		Subscribe sub = getSub(topic, groupId);
@@ -100,7 +86,7 @@ public class PushMonitor implements InitializingBean {
 		processPushThread.setDaemon(true);
 		processPushThread.start();
 
-		String thisFileName = MQServerConfig.PUSH_PERSIST_FILE;
+		String thisFileName = QMServerConfig.PUSH_PERSIST_FILE;
 		if (new File(thisFileName).exists()) {
 			subs = SerialUtil.readValueAsFile(thisFileName, new TypeReference<HashMap<String, Subscribe>>() {
 			});
@@ -118,7 +104,7 @@ public class PushMonitor implements InitializingBean {
 
 	//////////////////////////////////////////////////
 	private synchronized void persist() {
-		String thisFileName = MQServerConfig.PUSH_PERSIST_FILE;
+		String thisFileName = QMServerConfig.PUSH_PERSIST_FILE;
 		SerialUtil.writeValueAsFile(thisFileName, subs);
 	}
 

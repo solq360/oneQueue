@@ -1,10 +1,10 @@
-package com.eyu.onequeue.socket.handle;
+package com.eyu.onequeue.socket.model;
 
 import java.util.List;
 
 import com.eyu.onequeue.protocol.model.QMessage;
 
-public interface IQMessageHandle {
+public interface IProduceHandle {
 
     public void onSucceed(String topic, List<QMessage<?,?>> qMessages);
 

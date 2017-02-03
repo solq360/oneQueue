@@ -11,7 +11,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-import com.eyu.onequeue.MQServerConfig;
+import com.eyu.onequeue.QMServerConfig;
 import com.eyu.onequeue.store.model.QQuery;
 import com.eyu.onequeue.store.model.QResult;
 import com.eyu.onequeue.util.FileUtil;
@@ -25,210 +25,244 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  * @author solq
  */
 public class FileIndexer {
-    private String topic;
+	private String topic;
 
-    private long offset;
+	private long offset;
 
-    private AtomicLong ai = new AtomicLong();
+	private AtomicLong ai = new AtomicLong();
 
-    private LinkedHashMap<Long, FileOperate> indexers = new LinkedHashMap<>();
+	private LinkedHashMap<Long, FileOperate> indexers = new LinkedHashMap<>();
 
-    private long lastFileIndexer = 0;
+	private long lastFileIndexer = 0;
 
-    ////////////////// 消息队列目的是 减少传输时数据量//////////////////////
-    @JsonIgnore
-    private Object persistQueueLock = new Object();
-    @JsonIgnore
-    private List<Object> persistQueue;
+	////////////////// 消息队列目的是 减少传输时数据量//////////////////////
+	@JsonIgnore
+	private Object persistQueueLock = new Object();
+	@JsonIgnore
+	private List<Object> persistQueue;
 
-    // 定时把消息队形写进文件底层，并做文件资源关闭
-    @JsonIgnore
-    private Thread monitor = new Thread(new Runnable() {
+	// 定时把消息队形写进文件底层，并做文件资源关闭
 
-	private void doTask() {
-	    wirteToBuffer();
-	    long now = System.currentTimeMillis();
-	    foreachAndLockFileOperate(fileOperate -> {
-		fileOperate.persist();
-		if ((now - fileOperate.getLastOperate()) < MQServerConfig.STORE_FILE_CLOSE_INTERVAL) {
-		    return;
-		}
-		FileUtil.close(fileOperate);
-	    });
-
-	    persistFileIndexer();
-	}
-
-	@Override
-	public void run() {
-	    while (!Thread.interrupted()) {
-		doTask();
-		try {
-		    Thread.sleep(MQServerConfig.STORE_FILE_PERSIST_INTERVAL);
-		} catch (InterruptedException e) {
-		    e.printStackTrace();
-		}
-	    }
-	    close();
-	}
-    }, " qm message persist monitor : " + topic);
-
-    public static FileIndexer of(String topic) {
-	FileIndexer ret = null;
-	final String rootPath = MQServerConfig.getStoreRootPath(topic);
-	String thisFileName = rootPath + FileIndexer.class.getSimpleName();
-	if (new File(thisFileName).exists()) {
-	    ret = SerialUtil.readValueAsFile(thisFileName, FileIndexer.class);
-	} else {
-	    ret = new FileIndexer();
-	    ret.topic = topic;
-	}
-	if (MQServerConfig.STORE_QUEUE_OPEN) {
-	    ret.persistQueue = new ArrayList<>(MQServerConfig.STORE_QUEUE_BUFFER_SIZE);
-	}
-
-	ret.monitor.setDaemon(true);
-	ret.monitor.start();
-	return ret;
-    }
-
-    public void close() {
-	wirteToBuffer();
-	foreachAndLockFileOperate(fileOperate -> FileUtil.close(fileOperate));
-	persistFileIndexer();
-    }
-
-    public void persist() {
-	wirteToBuffer();
-	foreachAndLockFileOperate(fileOperate -> fileOperate.persist());
-	persistFileIndexer();
-    }
-
-    public void write(byte[] bytes) {
-	FileOperate fileOperate = findLastFileIndexer(bytes.length);
-	synchronized (fileOperate) {
-	    fileOperate.wirte(bytes);
-	}
-    }
-
-    public void write(Object... messages) {
-	boolean wirteQueueSucceed = false;
-	if (MQServerConfig.STORE_QUEUE_OPEN) {
-	    synchronized (persistQueueLock) {
-		// 超过队列边界大小，切换操作
-		if (persistQueue.size() + messages.length > MQServerConfig.STORE_QUEUE_PERSIST_SIZE) {
-		    wirteToBuffer();
-		    wirteQueueSucceed = false;
+	public static FileIndexer of(String topic) {
+		FileIndexer ret = null;
+		final String rootPath = QMServerConfig.getStoreRootPath(topic);
+		String thisFileName = rootPath + FileIndexer.class.getSimpleName();
+		if (new File(thisFileName).exists()) {
+			ret = SerialUtil.readValueAsFile(thisFileName, FileIndexer.class);
 		} else {
-		    Collections.addAll(persistQueue, messages);
-		    wirteQueueSucceed = true;
+			ret = new FileIndexer();
+			ret.topic = topic;
 		}
-	    }
-	}
-	// 没把消息加入队列，直接写入底层
-	if (!wirteQueueSucceed) {
-	    write(SerialUtil.writeValueAsZipBytes(messages));
-	}
-
-    }
-
-    public QResult query(QQuery query) {
-	List<byte[]> list = new LinkedList<>();
-	AtomicLong offset = new AtomicLong();
-	final long start = query.getStartOffset();
-	foreachAndLockFileOperate(fileOperate -> {
-	    if (start > fileOperate.toOffset()) {
-		return;
-	    }
-	    fileOperate.readyReadNext();
-	    byte[] data = null;
-	    do {
-		try {
-		    data = fileOperate.next();
-		    list.add(data);
-		} catch (Exception e) {
-		    e.printStackTrace();
-		    break;
+		if (QMServerConfig.STORE_QUEUE_OPEN) {
+			ret.persistQueue = new ArrayList<>(QMServerConfig.STORE_QUEUE_BUFFER_SIZE);
 		}
-	    } while (data != null);
+		return ret;
+	}
 
-	    long t = Math.max(offset.get(), fileOperate.toOffset());
-	    offset.set(t);
-	});
-	return QResult.of(topic,offset.get(), list);
-    }
-    //////////////////////////////////////////////////////////////////////
+	public void close() {
+		wirteToBuffer();
+		foreachAndLockFileOperate(fileOperate -> FileUtil.close(fileOperate));
+		persistFileIndexer();
+	}
 
-    private void foreachAndLockFileOperate(Consumer<FileOperate> action) {
-	Map<Long, FileOperate> indexers = getIndexers();
-	for (Entry<Long, FileOperate> r : indexers.entrySet()) {
-	    final FileOperate fileOperate = r.getValue();
-	    synchronized (fileOperate) {
-		try {
-		    action.accept(fileOperate);
-		} catch (Exception e) {
-		    e.printStackTrace();
+	public void persist() {
+		wirteToBuffer();
+		foreachAndLockFileOperate(fileOperate -> {
+			fileOperate.persist();
+			if ((System.currentTimeMillis()
+					- fileOperate.getLastOperate()) > QMServerConfig.STORE_FILE_CLOSE_INTERVAL) {
+				FileUtil.close(fileOperate);
+			}
+		});
+		persistFileIndexer();
+	}
+
+	public void write(byte[] bytes) {
+		FileOperate fileOperate = findLastFileIndexer(bytes.length);
+		synchronized (fileOperate) {
+			fileOperate.wirte(bytes);
 		}
-	    }
 	}
-    }
 
-    private void wirteToBuffer() {
-	if (!MQServerConfig.STORE_QUEUE_OPEN) {
-	    return;
+	public void write(Object... messages) {
+		boolean wirteQueueSucceed = false;
+		if (QMServerConfig.STORE_QUEUE_OPEN) {
+			synchronized (persistQueueLock) {
+				// 超过队列边界大小，切换操作
+				if (persistQueue.size() + messages.length > QMServerConfig.STORE_QUEUE_PERSIST_SIZE) {
+					wirteToBuffer();
+					wirteQueueSucceed = false;
+				} else {
+					Collections.addAll(persistQueue, messages);
+					wirteQueueSucceed = true;
+				}
+			}
+		}
+		// 没把消息加入队列，直接写入底层
+		if (!wirteQueueSucceed) {
+			write(SerialUtil.writeValueAsZipBytes(messages));
+		}
+
 	}
-	byte[] bytes = null;
-	synchronized (persistQueueLock) {
-	    if (persistQueue.isEmpty()) {
-		return;
-	    }
-	    bytes = SerialUtil.writeValueAsZipBytes(persistQueue);
-	    persistQueue.clear();
+
+	public QResult query(QQuery query) {
+		List<byte[]> list = new LinkedList<>();
+		AtomicLong offset = new AtomicLong();
+		AtomicLong retAddSize = new AtomicLong();
+
+		final long start = query.getStartOffset();
+
+		foreachAndLockFileOperate(fileOperate -> {
+			// 已读数据过滤
+			if (start >= fileOperate.toOffset()) {
+				return;
+			}
+			// 防查询数据过大
+			if ((offset.get() - start) >= QMServerConfig.STORE_QUEUE_MAX_SIZE) {
+				return;
+			}
+
+			fileOperate.readyReadNext(start);
+			byte[] data = null;
+			long querySize = 0;
+			while (true) {
+				try {
+					data = fileOperate.next();
+				} catch (Exception e) {
+					e.printStackTrace();
+					break;
+				}
+				if (data == null) {
+					break;
+				}
+
+				list.add(data);
+				int addCount = data.length + Long.BYTES;
+				querySize += addCount;
+				retAddSize.addAndGet(addCount);
+
+				// 防查询数据过大
+				if (retAddSize.get() >= QMServerConfig.STORE_QUEUE_MAX_SIZE) {
+					break;
+				}
+			}
+			long t = fileOperate.getFiexdOffset() + querySize;
+			if (offset.get() > t) {
+				offset.set(t);
+			}
+		});
+		return QResult.of(topic, false, offset.get(), list);
 	}
-	if (bytes != null) {
-	    write(bytes);
+
+	public QResult queryForRaw(QQuery query) {
+		List<byte[]> list = new LinkedList<>();
+		AtomicLong offset = new AtomicLong();
+
+		final long start = query.getStartOffset();
+		foreachAndLockFileOperate(fileOperate -> {
+			// 已读数据过滤
+			if (start >= fileOperate.toOffset()) {
+				return;
+			}
+			// 防查询数据过大
+			if ((offset.get() - start) >= QMServerConfig.STORE_QUEUE_MAX_SIZE) {
+				return;
+			}
+
+			fileOperate.readyReadNext(start);
+			byte[] data = null;
+			try {
+				data = fileOperate.nextAll();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			if (data == null) {
+				return;
+			}
+			list.add(data);
+			int addCount = data.length + Long.BYTES;
+ 
+			long t = fileOperate.getFiexdOffset() + addCount;
+			if (offset.get() > t) {
+				offset.set(t);
+			}
+		});
+		return QResult.of(topic, true, offset.get(), list);
 	}
-    }
 
-    private synchronized void persistFileIndexer() {
-	String thisFileName = MQServerConfig.getStoreRootPath(topic) + FileIndexer.class.getSimpleName();
-	SerialUtil.writeValueAsFile(thisFileName, this);
-    }
+	//////////////////////////////////////////////////////////////////////
 
-    @SuppressWarnings("resource")
-    private synchronized FileOperate findLastFileIndexer(int addSzie) {
-	FileOperate ret = indexers.get(lastFileIndexer);
-	while (ret == null || (ret.getSize() + addSzie) >= MQServerConfig.STORE_SPLIT_SIZE) {
-	    lastFileIndexer = ai.getAndIncrement();
-	    ret = indexers.get(lastFileIndexer);
-	    if (ret == null) {
-		ret = FileOperate.of(topic, offset, lastFileIndexer);
-		indexers.put(lastFileIndexer, ret);
-	    }
+	private void foreachAndLockFileOperate(Consumer<FileOperate> action) {
+		Map<Long, FileOperate> indexers = getIndexers();
+		// indexers.values().parallelStream().forEach(action);
+		for (Entry<Long, FileOperate> r : indexers.entrySet()) {
+			final FileOperate fileOperate = r.getValue();
+			synchronized (fileOperate) {
+				try {
+					action.accept(fileOperate);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
 	}
-	return ret;
-    }
 
-    // getter
+	private void wirteToBuffer() {
+		if (!QMServerConfig.STORE_QUEUE_OPEN) {
+			return;
+		}
+		byte[] bytes = null;
+		synchronized (persistQueueLock) {
+			if (persistQueue.isEmpty()) {
+				return;
+			}
+			bytes = SerialUtil.writeValueAsZipBytes(persistQueue);
+			persistQueue.clear();
+		}
+		if (bytes != null) {
+			write(bytes);
+		}
+	}
 
-    public String getTopic() {
-	return topic;
-    }
+	private synchronized void persistFileIndexer() {
+		String thisFileName = QMServerConfig.getStoreRootPath(topic) + FileIndexer.class.getSimpleName();
+		SerialUtil.writeValueAsFile(thisFileName, this);
+	}
 
-    public long getOffset() {
-	return offset;
-    }
+	@SuppressWarnings("resource")
+	private synchronized FileOperate findLastFileIndexer(int addSzie) {
+		FileOperate ret = indexers.get(lastFileIndexer);
+		while (ret == null || (ret.getSize() + addSzie) >= QMServerConfig.STORE_SPLIT_SIZE) {
+			lastFileIndexer = ai.getAndIncrement();
+			ret = indexers.get(lastFileIndexer);
+			if (ret == null) {
+				ret = FileOperate.of(topic, offset, lastFileIndexer);
+				indexers.put(lastFileIndexer, ret);
+			}
+		}
+		return ret;
+	}
 
-    public AtomicLong getAi() {
-	return ai;
-    }
+	// getter
 
-    public synchronized LinkedHashMap<Long, FileOperate> getIndexers() {
-	return new LinkedHashMap<>(this.indexers);
-    }
+	public String getTopic() {
+		return topic;
+	}
 
-    public long getLastFileIndexer() {
-	return lastFileIndexer;
-    }
+	public long getOffset() {
+		return offset;
+	}
+
+	public AtomicLong getAi() {
+		return ai;
+	}
+
+	public synchronized LinkedHashMap<Long, FileOperate> getIndexers() {
+		return new LinkedHashMap<>(this.indexers);
+	}
+
+	public long getLastFileIndexer() {
+		return lastFileIndexer;
+	}
 
 }

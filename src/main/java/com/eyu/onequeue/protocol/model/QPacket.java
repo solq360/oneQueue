@@ -1,11 +1,11 @@
 package com.eyu.onequeue.protocol.model;
 
-import com.eyu.onequeue.MQServerConfig;
-import com.eyu.onequeue.util.PackageUtil;
+import com.eyu.onequeue.QMServerConfig;
+import com.eyu.onequeue.util.PacketUtil;
 import com.eyu.onequeue.util.SerialUtil;
 
 /***
- * 包 格式 [sn] + [c] + [b] +[sid] {@link PackageUtil#PACK_FIXED_LENG}
+ * 包 格式 [sn] + [c] + [b] +[sid] {@link PacketUtil#PACK_FIXED_LENG}
  * 
  * @author solq
  */
@@ -21,32 +21,32 @@ public class QPacket {
 
     public static QPacket object2Package(Object obj) {
 	byte[] b = SerialUtil.writeValueAsBytes(obj);
-	short c = MQServerConfig.MESSAGE_CODE_NORMAL;
-	if (b.length > MQServerConfig.MESSAGE_ZIP_VALUE_UPPER) {
+	short c = QMServerConfig.MESSAGE_CODE_NORMAL;
+	if (b.length > QMServerConfig.MESSAGE_ZIP_VALUE_UPPER) {
 	    b = SerialUtil.zip(b);
-	    c = MQServerConfig.MESSAGE_CODE_ZIP;
+	    c = QMServerConfig.MESSAGE_CODE_ZIP;
 	}
 
-	long sn = PackageUtil.getSn();
-	long sid = PackageUtil.getSessionId();
+	long sn = PacketUtil.getSn();
+	long sid = PacketUtil.getSessionId();
 	return of(c, sn, sid, b);
     }
 
     public byte[] toBytes() {
-	final int len = PackageUtil.PACK_FIXED_LENG + b.length;
+	final int len = PacketUtil.PACK_FIXED_LENG + b.length;
 	byte[] ret = new byte[len];
-	PackageUtil.writeLong(0, sn, ret);
-	PackageUtil.writeShort(Long.BYTES, c, ret);
-	PackageUtil.writeBytes(Long.BYTES + Short.BYTES, b, ret);
-	PackageUtil.writeLong(Long.BYTES + Short.BYTES + b.length, sid, ret);
+	PacketUtil.writeLong(0, sn, ret);
+	PacketUtil.writeShort(Long.BYTES, c, ret);
+	PacketUtil.writeBytes(Long.BYTES + Short.BYTES, b, ret);
+	PacketUtil.writeLong(Long.BYTES + Short.BYTES + b.length, sid, ret);
 	return ret;
     }
 
     public static QPacket byte2Package(byte[] bytes) {
-	long sn = PackageUtil.readLong(0, bytes);
-	short c = PackageUtil.readShort(Long.BYTES, bytes);
-	byte[] b = PackageUtil.readBytes(Long.BYTES + Short.BYTES, bytes.length - PackageUtil.PACK_FIXED_LENG, bytes);
-	long sid = PackageUtil.readLong(Long.BYTES + Short.BYTES + b.length, bytes);
+	long sn = PacketUtil.readLong(0, bytes);
+	short c = PacketUtil.readShort(Long.BYTES, bytes);
+	byte[] b = PacketUtil.readBytes(Long.BYTES + Short.BYTES, bytes.length - PacketUtil.PACK_FIXED_LENG, bytes);
+	long sid = PacketUtil.readLong(Long.BYTES + Short.BYTES + b.length, bytes);
 	return of(c, sn, sid, b);
     }
 
