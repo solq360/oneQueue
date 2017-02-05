@@ -149,42 +149,8 @@ public class FileIndexer {
 		offset.set(t);
 	    }
 	});
-	return QResult.of(topic, offset.get(), list);
-    }
-
-    public QResult queryForRaw(QQuery query) {
-	List<byte[]> list = new LinkedList<>();
-	AtomicLong offset = new AtomicLong();
-
-	final long start = query.getStartOffset();
-	foreachAndLockFileOperate(fileOperate -> {
-	    // 已读数据过滤
-	    if (start >= fileOperate.toOffset()) {
-		return;
-	    }
-	    // 防查询数据过大
-	    if ((offset.get() - start) >= QMServerConfig.STORE_QUEUE_MAX_SIZE) {
-		return;
-	    }
-
-	    fileOperate.readyReadNext(start);
-	    byte[] data = null;
-	    try {
-		data = fileOperate.nextAll();
-	    } catch (Exception e) {
-		e.printStackTrace();
-	    }
-	    if (data == null) {
-		return;
-	    }
-
-	    list.add(data);
-	    long t = fileOperate.getFiexdOffset() + data.length;
-	    if (t > offset.get()) {
-		offset.set(t);
-	    }
-	});
-
+	
+	
 	int len = 0;
 	for (byte[] data : list) {
 	    len += data.length + 4;
@@ -197,9 +163,58 @@ public class FileIndexer {
 	    PacketUtil.writeBytes(os, data, rawData);
 	    os += data.length;
 	}
-
+	
 	return QResult.ofRaw(topic, offset.get(), rawData);
     }
+
+//    public QResult queryForRaw(QQuery query) {
+//	List<byte[]> list = new LinkedList<>();
+//	AtomicLong offset = new AtomicLong();
+//
+//	final long start = query.getStartOffset();
+//	foreachAndLockFileOperate(fileOperate -> {
+//	    // 已读数据过滤
+//	    if (start >= fileOperate.toOffset()) {
+//		return;
+//	    }
+//	    // 防查询数据过大
+//	    if ((offset.get() - start) >= QMServerConfig.STORE_QUEUE_MAX_SIZE) {
+//		return;
+//	    }
+//
+//	    fileOperate.readyReadNext(start);
+//	    byte[] data = null;
+//	    try {
+//		data = fileOperate.nextAll();
+//	    } catch (Exception e) {
+//		e.printStackTrace();
+//	    }
+//	    if (data == null) {
+//		return;
+//	    }
+//
+//	    list.add(data);
+//	    long t = fileOperate.getFiexdOffset() + data.length;
+//	    if (t > offset.get()) {
+//		offset.set(t);
+//	    }
+//	});
+//
+//	int len = 0;
+//	for (byte[] data : list) {
+//	    len += data.length + 4;
+//	}
+//	byte[] rawData = new byte[len];
+//	int os = 0;
+//	for (byte[] data : list) {
+//	    PacketUtil.writeInt(os, data.length, rawData);
+//	    os += 4;
+//	    PacketUtil.writeBytes(os, data, rawData);
+//	    os += data.length;
+//	}
+//
+//	return QResult.ofRaw(topic, offset.get(), rawData);
+//    }
 
     //////////////////////////////////////////////////////////////////////
 

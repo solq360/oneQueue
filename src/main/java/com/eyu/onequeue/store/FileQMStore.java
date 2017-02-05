@@ -38,10 +38,10 @@ public class FileQMStore implements IQMStore {
 	return fileIndexer.query(query);
     }
 
-    @Override
-    public QResult queryForRaw(QQuery query) {
-	return fileIndexer.queryForRaw(query);
-    }
+//    @Override
+//    public QResult queryForRaw(QQuery query) {
+//	return fileIndexer.queryForRaw(query);
+//    }
 
     @Override
     public void persist() {

@@ -13,7 +13,6 @@ import com.eyu.onequeue.store.FileQMStore;
 import com.eyu.onequeue.store.model.IQMStore;
 import com.eyu.onequeue.store.model.QQuery;
 import com.eyu.onequeue.store.model.QResult;
-import com.eyu.onequeue.util.SerialUtil;
 import com.eyu.onequeue.util.TimeUtil;
 import com.eyu.onqueue.message.TestMessageObject;
 
@@ -21,8 +20,8 @@ public class TestFileQMStore {
     String topic = "topic_test";
 
     QProduce ofProduce() {
-	TestMessageObject obj = TestMessageObject.of();
 	int count = 2000;
+	TestMessageObject obj = TestMessageObject.ofBig(200);
 	List<QMessage<Long, TestMessageObject>> tmp = new ArrayList<>();
 	for (int i = 0; i < count; i++) {
 	    tmp.add(QMessage.of(1L, obj));
@@ -56,26 +55,53 @@ public class TestFileQMStore {
 	FileIndexer fileIndexer = FileIndexer.of(topic);
 	// 应用层处理
 	IQMStore store = FileQMStore.of(topic, fileIndexer);
+	TimeUtil.record();
 
 	QResult l = store.query(QQuery.of(topic, 0));
-	for (byte[] b : l.getBatchData()) {
-	    List<QMessage> t = SerialUtil.readArray(SerialUtil.unZip(b), QMessage.class);
-	    System.out.println(t.size());
-	}
+	TimeUtil.println("query : ");
+	TimeUtil.record();
+
+	List<QMessage<?, ?>> t = l.toMessageData();
+	System.out.println(t.size());
+	TimeUtil.println("decode : ");
+
     }
 
     @Test
-    public void test_queryRaw() {
+    public void test_decodeRaw() {
+	// 文件物理与业务逻辑层处理
+	FileIndexer fileIndexer = FileIndexer.of(topic);
+	// 应用层处理
+	IQMStore store = FileQMStore.of(topic, fileIndexer);
+
+	QResult l = store.query(QQuery.of(topic, 0));
+	
+	TimeUtil.record();
+	l.foreachMessageData((list)->{
+	    System.out.println(list.length);
+	});
+	TimeUtil.println("decode : ");
+    }
+ 
+    
+    @Test
+    public void test_ConsumeHandle() {
 	// 文件物理与业务逻辑层处理
 	FileIndexer fileIndexer = FileIndexer.of(topic);
 	// 应用层处理
 	IQMStore store = FileQMStore.of(topic, fileIndexer);
 
 	TimeUtil.record();
-	QResult l = store.queryForRaw(QQuery.of(topic, 0));
-	System.out.println(l.getRawData().length);
-	ConsumeHandle handle = new ConsumeHandle();
-	handle.onSucceed(l);
+	QResult l = store.query(QQuery.of(topic, 0));
 	TimeUtil.println("query : ");
+
+	System.out.println(l.getRawData().length);
+
+	TimeUtil.record();
+	ConsumeHandle handle = ConsumeHandle.of((list)->{
+	   System.out.println(list.length); 
+	});
+	handle.onSucceed(l);
+	TimeUtil.println("handle : ");
     }
 }

@@ -1,8 +1,9 @@
 package com.eyu.onequeue.store.model;
 
-import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import com.eyu.onequeue.protocol.anno.QModel;
 import com.eyu.onequeue.protocol.model.QMessage;
@@ -18,12 +19,9 @@ public class QResult {
      * 最后读取指针记录
      */
     private long offset;
+
     /**
-     * 返回数据
-     */
-    private List<byte[]> batchData;
-    /**
-     * 返回数据
+     * 返回raw数据
      */
     private byte[] rawData;
     /**
@@ -55,27 +53,30 @@ public class QResult {
 	return ofRaw(topic, offset, rawData);
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public void foreachMessageData(Consumer<QMessage<?, ?>[]> action) {
+	rawToMessageData(action);
+    }
+
     public List<QMessage<?, ?>> toMessageData() {
-	List<QMessage<?, ?>> ret = new LinkedList<>();
-	byte[] tBytes = null;
-	byte[] stBytes = null;
+	return rawToMessageData(null);
+    }
+
+    List<QMessage<?, ?>> rawToMessageData(Consumer<QMessage<?, ?>[]> action) {
+	List<QMessage<?, ?>> ret = null;
+	if (action == null) {
+	    ret = new LinkedList<>();
+	}
 	int os = 0;
 	while (os < rawData.length) {
 	    int len = 0;
 	    try {
 		len = PacketUtil.readInt(os, rawData);
-		tBytes = PacketUtil.readBytes(os + Integer.BYTES, len, rawData);
-
-		int sos = 0;
-		int slen = 0;
-		while (sos < tBytes.length) {
-		    slen = PacketUtil.readInt(sos, tBytes);
-		    sos += Integer.BYTES;
-		    stBytes = SerialUtil.unZip(PacketUtil.readBytes(sos, slen, tBytes));
-		    sos += slen;
-		    List<QMessage> list = SerialUtil.readArray(stBytes, QMessage.class);
-		    ret.addAll((Collection<? extends QMessage<?, ?>>) list);
+		byte[] tBytes = PacketUtil.readBytes(os + Integer.BYTES, len, rawData);
+		QMessage<?, ?>[] t = SerialUtil.readArray(SerialUtil.unZip(tBytes), QMessage.class);
+		if (action == null) {
+		    Collections.addAll(ret, t);
+		} else {
+		    action.accept(t);
 		}
 
 	    } catch (Exception e) {
@@ -88,14 +89,11 @@ public class QResult {
 	}
 	return ret;
     }
+ 
     // getter
 
     public long getOffset() {
 	return offset;
-    }
-
-    public List<byte[]> getBatchData() {
-	return batchData;
     }
 
     public String getTopic() {
@@ -104,14 +102,6 @@ public class QResult {
 
     public byte[] getRawData() {
 	return rawData;
-    }
-
-    public static QResult of(String topic, long offset, List<byte[]> batchData) {
-	QResult ret = new QResult();
-	ret.topic = topic;
-	ret.offset = offset;
-	ret.batchData = batchData;
-	return ret;
     }
 
     public static QResult ofRaw(String topic, long offset, byte[] rawData) {

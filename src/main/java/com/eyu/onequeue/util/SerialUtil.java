@@ -4,6 +4,9 @@ import java.io.File;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.reflect.TypeUtils;
@@ -13,13 +16,15 @@ import org.slf4j.helpers.MessageFormatter;
 import com.eyu.common.utils.codec.ZlibUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.CollectionLikeType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
 @SuppressWarnings({ "unchecked", "rawtypes" })
 public abstract class SerialUtil {
-
+    /** 解压任务线程池 */
+    private static ExecutorService executorService = PoolUtil.createCachePool("json array");
     public final static ObjectMapper MAPPER_CONVERT = new ObjectMapper();
 
     public static byte[] zip(byte[] src) {
@@ -38,7 +43,7 @@ public abstract class SerialUtil {
 	    throw new RuntimeException(e);
 	}
     }
-    
+
     public static <T> T readValueAsFile(String fileName, TypeReference<T> valueTypeRef) {
 	try {
 	    FileUtil.createDirs(fileName);
@@ -47,7 +52,7 @@ public abstract class SerialUtil {
 	    throw new RuntimeException(e);
 	}
     }
- 
+
     public static void writeValueAsFile(String fileName, Object value) {
 	try {
 	    FileUtil.createDirs(fileName);
@@ -57,13 +62,31 @@ public abstract class SerialUtil {
 	}
     }
 
-    public static <T> List<T> readArray(byte[] src, Class<T> clz) {
+    public static <T> List<T> readList(byte[] src, Class<T> clz) {
 	if (src == null) {
 	    return null;
 	}
 	try {
-	    CollectionLikeType type = TypeFactory.defaultInstance().constructCollectionType(LinkedList.class, clz);
-	    return MAPPER_CONVERT.readValue(src, type);
+	    Future<List<T>> future = executorService.submit(new Callable<List<T>>() {
+		@Override
+		public List<T> call() throws Exception {
+		    CollectionLikeType type = TypeFactory.defaultInstance().constructCollectionType(LinkedList.class, clz);
+		    return MAPPER_CONVERT.readValue(src, type);
+		}
+	    });
+	    return future.get();
+	} catch (Exception e) {
+	    throw new RuntimeException(e);
+	}
+    }
+
+    public static <T> T[] readArray(byte[] src, Class<T> clz) {
+	if (src == null) {
+	    return null;
+	}
+	try {
+	    JavaType type = TypeFactory.defaultInstance().constructArrayType(clz);
+	    return (T[]) MAPPER_CONVERT.readValue(src, type);
 	} catch (Exception e) {
 	    throw new RuntimeException(e);
 	}
@@ -119,18 +142,20 @@ public abstract class SerialUtil {
 
     public static byte[] writeValueAsBytes(Object obj) {
 	try {
-	    return MAPPER_CONVERT.writeValueAsBytes(obj);
-	} catch (JsonProcessingException e) {
+	    Future<byte[]> future = executorService.submit(new Callable<byte[]>() {
+		@Override
+		public byte[] call() throws Exception {
+		    return MAPPER_CONVERT.writeValueAsBytes(obj);
+		}
+	    });
+	    return future.get();
+	} catch (Exception e) {
 	    throw new RuntimeException(e);
 	}
     }
 
     public static byte[] writeValueAsZipBytes(Object obj) {
-	try {
-	    return ZlibUtils.zip(MAPPER_CONVERT.writeValueAsBytes(obj));
-	} catch (JsonProcessingException e) {
-	    throw new RuntimeException(e);
-	}
+	return ZlibUtils.zip(writeValueAsBytes(obj));
     }
 
     public static String writeValueAsString(Object obj) {

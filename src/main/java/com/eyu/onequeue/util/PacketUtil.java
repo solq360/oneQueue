@@ -1,5 +1,6 @@
 package com.eyu.onequeue.util;
 
+import java.math.BigDecimal;
 import java.util.concurrent.atomic.AtomicLong;
 
 /***
@@ -26,6 +27,13 @@ public abstract class PacketUtil {
 
     public static long getSessionId() {
 	return getSn();
+    }
+
+    public static Double toMSize(int length) {
+	double ret = length / 1024d / 1024d;
+	BigDecimal bg = new BigDecimal(ret);
+	ret = bg.setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue();
+	return ret;
     }
 
     public static void writeLong(int offset, long v, byte[] ret) {

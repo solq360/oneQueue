@@ -12,7 +12,7 @@ public interface IQMStore {
     public void save(byte[] bytes);
 
     public QResult query(QQuery query);
-    public QResult queryForRaw(QQuery query);
+   // public QResult queryForRaw(QQuery query);
 
     public void persist();
 

@@ -1,4 +1,4 @@
-package com.eyu.onqueue;
+package com.eyu.onqueue.other;
 
 public class TestLock {
 

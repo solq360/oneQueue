@@ -22,9 +22,8 @@ public class QPacket {
  
     public static QPacket produce2Packet(Object obj) {
  	short c =(short) (obj.getClass().getAnnotation(QModel.class).value() *10);
-	byte[] b = SerialUtil.writeValueAsBytes(obj);
-	 b = SerialUtil.zip(b);
-	long sn = PacketUtil.getSn();
+	byte[] b = SerialUtil.writeValueAsZipBytes(obj);
+ 	long sn = PacketUtil.getSn();
 	long sid = PacketUtil.getSessionId();
 	return of(c, sn, sid, b);
     }

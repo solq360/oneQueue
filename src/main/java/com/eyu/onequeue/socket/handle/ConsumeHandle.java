@@ -1,6 +1,6 @@
 package com.eyu.onequeue.socket.handle;
 
-import java.util.List;
+import java.util.function.Consumer;
 
 import com.eyu.onequeue.protocol.model.QMessage;
 import com.eyu.onequeue.socket.model.IConsumeHandle;
@@ -13,12 +13,25 @@ import com.eyu.onequeue.store.model.QResult;
  */
 public class ConsumeHandle implements IConsumeHandle {
 
-    @Override
-    public void onSucceed(QResult qResult) {
-	doSucceed(qResult.getTopic(), qResult.toMessageData());
+    public static ConsumeHandle of(Consumer<QMessage<?, ?>[]> action) {
+	ConsumeHandle ret = new ConsumeHandle();
+	ret.action = action;
+	return ret;
     }
 
-    public void doSucceed(String topic, List<QMessage<?, ?>> qMessages) {
-	System.out.println(qMessages.size());
+    private Consumer<QMessage<?, ?>[]> action;
+
+    @Override
+    public void onSucceed(QResult qResult) {
+	qResult.foreachMessageData(getAction());
+    }
+
+    void doSucceed(String topic, QResult qResult) {
+
+    }
+
+    @Override
+    public Consumer<QMessage<?, ?>[]> getAction() {
+	return action;
     }
 }
