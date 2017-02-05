@@ -5,7 +5,7 @@ import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
-public class FileUtil {
+public abstract class FileUtil {
 
     public static void createDirs(String fileName) {
 	File file = new File(fileName);

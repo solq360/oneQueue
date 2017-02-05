@@ -1,6 +1,8 @@
 package com.eyu.onequeue.socket.model;
 
+import com.eyu.onequeue.store.model.QResult;
+
 public interface IConsumeHandle {
 
-	public void onSucceed(String topic,  byte[] bytes);
+    public void onSucceed(QResult qResult);
 }

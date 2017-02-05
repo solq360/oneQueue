@@ -3,6 +3,7 @@ package com.eyu.onequeue.push;
 import java.util.LinkedList;
 import java.util.List;
 
+import com.eyu.onequeue.protocol.model.QPacket;
 import com.eyu.onequeue.socket.model.QNode;
 import com.eyu.onequeue.store.model.QResult;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -48,7 +49,7 @@ public class Subscribe {
 
 	public void push(QResult result) {
 		QNode node = findNode();
-		node.sendSync(result.toPacket());
+		node.sendSync(QPacket.result2Packet(result));
 		// 推送成功记录
 		this.offset = Math.max(result.getOffset(), offset);
 	}

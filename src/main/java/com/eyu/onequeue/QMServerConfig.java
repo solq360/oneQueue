@@ -2,10 +2,10 @@ package com.eyu.onequeue;
 
 public interface QMServerConfig {
     // MESSAGE
-    final short MESSAGE_CODE_NORMAL = 0;
-    final short MESSAGE_CODE_ZIP = 1;
-
-    int MESSAGE_ZIP_VALUE_UPPER = 500;
+//    final short MESSAGE_CODE_NORMAL = 0;
+//    final short MESSAGE_CODE_ZIP = 1;
+//
+//    int MESSAGE_ZIP_VALUE_UPPER = 500;
 
     // STORE
     /** 消息 文件大小 **/

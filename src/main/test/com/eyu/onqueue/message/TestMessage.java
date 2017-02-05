@@ -78,7 +78,7 @@ public class TestMessage {
 	byte[] bytes = qp.toBytes();
 	System.out.println("QPacket to bytes : " + bytes.length);
 
-	qp = QPacket.byte2Package(bytes);
+	qp = QPacket.byte2Packet(bytes);
 	System.out.println("bytes to QPacket : " + qp.getC());
 	System.out.println("bytes to QPacket : " + qp.getSn());
 	System.out.println("bytes to QPacket : " + qp.getSid());

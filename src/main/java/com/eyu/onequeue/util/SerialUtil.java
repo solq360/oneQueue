@@ -18,7 +18,7 @@ import com.fasterxml.jackson.databind.type.CollectionLikeType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public class SerialUtil {
+public abstract class SerialUtil {
 
     public final static ObjectMapper MAPPER_CONVERT = new ObjectMapper();
 

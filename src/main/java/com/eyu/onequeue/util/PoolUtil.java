@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PoolUtil {
+public abstract class PoolUtil {
 	private static final Logger logger = LoggerFactory.getLogger(PoolUtil.class);
 
 	public static ExecutorService createPool(int maxCore, int timeOutSeconds, String threadName) {

@@ -1,10 +1,13 @@
 package com.eyu.onequeue.protocol.model;
 
+import com.eyu.onequeue.protocol.anno.QModel;
+
 /***
  * 属性名采取最少字母命名，减少通信跟存储 生产消息对象
  * 
  * @author solq
  */
+@QModel(QModel.QPRODUCE)
 public class QProduce {
     /** 订阅 **/
     private String t;
