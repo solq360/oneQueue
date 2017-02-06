@@ -3,11 +3,11 @@ package com.eyu.onequeue.socket.model;
 import java.util.function.Consumer;
 
 import com.eyu.onequeue.protocol.model.QMessage;
-import com.eyu.onequeue.store.model.QResult;
+import com.eyu.onequeue.protocol.model.QConsume;
 
 public interface IConsumeHandle {
 
-    public void onSucceed(QResult qResult);
+    public void onSucceed(QConsume qConsume);
     
     public Consumer<QMessage<?, ?>[]> getAction();
 }

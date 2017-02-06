@@ -1,7 +1,6 @@
 package com.eyu.onequeue.protocol.model;
 
 import com.eyu.onequeue.protocol.anno.QModel;
-import com.eyu.onequeue.store.model.QResult;
 import com.eyu.onequeue.util.PacketUtil;
 import com.eyu.onequeue.util.SerialUtil;
 
@@ -15,22 +14,44 @@ public class QPacket {
     private long sn;
     /** sessionId **/
     private long sid;
-    /** code 编码 (格式: model *10  ) **/
+    /** code 编码 (格式: model *10 ) **/
     private short c;
     /** 内容 **/
     private byte[] b;
- 
+
+    public byte[] toBytes() {
+	final int len = PacketUtil.PACK_FIXED_LENG + b.length;
+	byte[] ret = new byte[len];
+	PacketUtil.writeLong(0, sn, ret);
+	PacketUtil.writeShort(Long.BYTES, c, ret);
+	PacketUtil.writeBytes(Long.BYTES + Short.BYTES, b, ret);
+	PacketUtil.writeLong(Long.BYTES + Short.BYTES + b.length, sid, ret);
+	return ret;
+    }
+
+    public QProduce toProduce() {
+	QProduce ret = SerialUtil.readZipValue(b, QProduce.class);
+	return ret;
+    }
+
+    public QConsume toConsume() {
+	QConsume ret = QConsume.byte2Object(SerialUtil.zip(b));
+	return ret;
+    }
+
+    // static
     public static QPacket produce2Packet(Object obj) {
- 	short c =(short) (obj.getClass().getAnnotation(QModel.class).value() *10);
+	short c = (short) (obj.getClass().getAnnotation(QModel.class).value() * 10);
 	byte[] b = SerialUtil.writeValueAsZipBytes(obj);
- 	long sn = PacketUtil.getSn();
+	long sn = PacketUtil.getSn();
 	long sid = PacketUtil.getSessionId();
 	return of(c, sn, sid, b);
     }
-    public static QPacket result2Packet(QResult obj) {
- 	short c =(short) (obj.getClass().getAnnotation(QModel.class).value() *10);
+
+    public static QPacket result2Packet(QConsume obj) {
+	short c = (short) (obj.getClass().getAnnotation(QModel.class).value() * 10);
 	byte[] b = obj.toBytes();
- 	b = SerialUtil.zip(b);
+	b = SerialUtil.zip(b);
 	long sn = PacketUtil.getSn();
 	long sid = PacketUtil.getSessionId();
 	return of(c, sn, sid, b);
@@ -43,16 +64,7 @@ public class QPacket {
 	long sid = PacketUtil.readLong(Long.BYTES + Short.BYTES + b.length, bytes);
 	return of(c, sn, sid, b);
     }
-    
-    public byte[] toBytes() {
-	final int len = PacketUtil.PACK_FIXED_LENG + b.length;
-	byte[] ret = new byte[len];
-	PacketUtil.writeLong(0, sn, ret);
-	PacketUtil.writeShort(Long.BYTES, c, ret);
-	PacketUtil.writeBytes(Long.BYTES + Short.BYTES, b, ret);
-	PacketUtil.writeLong(Long.BYTES + Short.BYTES + b.length, sid, ret);
-	return ret;
-    }
+
     // getter
 
     public short getC() {

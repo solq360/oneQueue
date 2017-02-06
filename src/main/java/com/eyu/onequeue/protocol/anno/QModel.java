@@ -12,5 +12,5 @@ public @interface QModel {
     short value();
     
     public static final short QPRODUCE =1;
-    public static final short QRESULT =2;
+    public static final short QCONSUME =2;
 }

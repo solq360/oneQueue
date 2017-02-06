@@ -1,4 +1,4 @@
-package com.eyu.onequeue.store.model;
+package com.eyu.onequeue.protocol.model;
 
 import java.util.Collections;
 import java.util.LinkedList;
@@ -6,15 +6,14 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import com.eyu.onequeue.protocol.anno.QModel;
-import com.eyu.onequeue.protocol.model.QMessage;
 import com.eyu.onequeue.util.PacketUtil;
 import com.eyu.onequeue.util.SerialUtil;
 
 /**
  * @author solq
  */
-@QModel(QModel.QRESULT)
-public class QResult {
+@QModel(QModel.QCONSUME)
+public class QConsume {
     /**
      * 最后读取指针记录
      */
@@ -42,14 +41,14 @@ public class QResult {
 	return ret;
     }
 
-    public static QResult byte2Object(byte[] bytes) {
+    public static QConsume byte2Object(byte[] bytes) {
 
 	final int tLen = PacketUtil.readInt(0, bytes);
 	final String topic = PacketUtil.readString(Integer.BYTES, tLen, bytes);
 	final int dataLen = PacketUtil.readInt(Integer.BYTES + tLen, bytes);
 	byte[] rawData = PacketUtil.readBytes(Integer.BYTES + tLen + Integer.BYTES, dataLen, bytes);
 	final long offset = PacketUtil.readLong(Integer.BYTES + tLen + Integer.BYTES + rawData.length, bytes);
-	return ofRaw(topic, offset, rawData);
+	return of(topic, offset, rawData);
     }
 
     public void foreachMessageData(Consumer<QMessage<?, ?>[]> action) {
@@ -104,8 +103,8 @@ public class QResult {
 	return rawData;
     }
 
-    public static QResult ofRaw(String topic, long offset, byte[] rawData) {
-	QResult ret = new QResult();
+    public static QConsume of(String topic, long offset, byte[] rawData) {
+	QConsume ret = new QConsume();
 	ret.topic = topic;
 	ret.offset = offset;
 	ret.rawData = rawData;

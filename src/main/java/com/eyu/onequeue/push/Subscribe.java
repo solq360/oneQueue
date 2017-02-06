@@ -4,8 +4,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import com.eyu.onequeue.protocol.model.QPacket;
+import com.eyu.onequeue.protocol.model.QConsume;
 import com.eyu.onequeue.socket.model.QNode;
-import com.eyu.onequeue.store.model.QResult;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
@@ -47,7 +47,7 @@ public class Subscribe {
 		nodes.remove(node);
 	}
 
-	public void push(QResult result) {
+	public void push(QConsume result) {
 		QNode node = findNode();
 		node.sendSync(QPacket.result2Packet(result));
 		// 推送成功记录

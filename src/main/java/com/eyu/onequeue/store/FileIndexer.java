@@ -14,8 +14,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import com.eyu.onequeue.QMServerConfig;
+import com.eyu.onequeue.protocol.model.QConsume;
 import com.eyu.onequeue.store.model.QQuery;
-import com.eyu.onequeue.store.model.QResult;
 import com.eyu.onequeue.util.FileUtil;
 import com.eyu.onequeue.util.PacketUtil;
 import com.eyu.onequeue.util.SerialUtil;
@@ -116,7 +116,7 @@ public class FileIndexer {
 	}
     }
 
-    public QResult query(QQuery query) {
+    public QConsume query(QQuery query) {
 	List<byte[]> list = new LinkedList<>();
 	AtomicLong offset = new AtomicLong();
 	AtomicLong retAddSize = new AtomicLong();
@@ -129,7 +129,7 @@ public class FileIndexer {
 		return;
 	    }
 	    // 防查询数据过大
-	    if ((offset.get() - start) >= QMServerConfig.STORE_QUEUE_MAX_SIZE) {
+	    if (retAddSize.get() >= QMServerConfig.STORE_QUEUE_MAX_SIZE) {
 		return;
 	    }
 
@@ -178,7 +178,7 @@ public class FileIndexer {
 	}
 	list.clear();
 
-	return QResult.ofRaw(topic, offset.get(), rawData);
+	return QConsume.of(topic, offset.get(), rawData);
     }
 
     // public QResult queryForRaw(QQuery query) {
@@ -301,8 +301,8 @@ public class FileIndexer {
 	return new LinkedHashMap<>(this.indexers);
     }
 
-    public LinkedHashMap<Long, FileOperate> getRemoveRecords() {
-	return removeRecords;
+    public synchronized LinkedHashMap<Long, FileOperate> getRemoveRecords() {
+	return new LinkedHashMap<>(this.removeRecords);
     }
 
 }

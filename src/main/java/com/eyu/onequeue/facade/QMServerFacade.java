@@ -3,11 +3,11 @@ package com.eyu.onequeue.facade;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.eyu.onequeue.protocol.model.QConsume;
 import com.eyu.onequeue.push.PushMonitor;
 import com.eyu.onequeue.socket.model.QNode;
 import com.eyu.onequeue.store.QMStoreService;
 import com.eyu.onequeue.store.model.QQuery;
-import com.eyu.onequeue.store.model.QResult;
 
 /**
  * 对外公开服务
@@ -27,7 +27,7 @@ public class QMServerFacade implements IQMServerFacade {
 	}
 
 	@Override
-	public QResult query(QQuery query) {
+	public QConsume query(QQuery query) {
 		return storeService.query(query);
 	}
 

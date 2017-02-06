@@ -4,5 +4,5 @@ import javax.management.MXBean;
 
 @MXBean
 public interface IStoreMBean {
-    public int getStoreCount();
+    public int getUseStoreCount();
 }

@@ -7,12 +7,12 @@ import org.junit.Test;
 
 import com.eyu.onequeue.protocol.model.QMessage;
 import com.eyu.onequeue.protocol.model.QProduce;
+import com.eyu.onequeue.protocol.model.QConsume;
 import com.eyu.onequeue.socket.handle.ConsumeHandle;
 import com.eyu.onequeue.store.FileIndexer;
 import com.eyu.onequeue.store.FileQMStore;
 import com.eyu.onequeue.store.model.IQMStore;
 import com.eyu.onequeue.store.model.QQuery;
-import com.eyu.onequeue.store.model.QResult;
 import com.eyu.onequeue.util.TimeUtil;
 import com.eyu.onqueue.message.TestMessageObject;
 
@@ -57,7 +57,7 @@ public class TestFileQMStore {
 	IQMStore store = FileQMStore.of(topic, fileIndexer);
 	TimeUtil.record();
 
-	QResult l = store.query(QQuery.of(topic, 0));
+	QConsume l = store.query(QQuery.of(topic, 0));
 	TimeUtil.println("query : ");
 	TimeUtil.record();
 
@@ -74,7 +74,7 @@ public class TestFileQMStore {
 	// 应用层处理
 	IQMStore store = FileQMStore.of(topic, fileIndexer);
 
-	QResult l = store.query(QQuery.of(topic, 0));
+	QConsume l = store.query(QQuery.of(topic, 0));
 	
 	TimeUtil.record();
 	l.foreachMessageData((list)->{
@@ -92,7 +92,7 @@ public class TestFileQMStore {
 	IQMStore store = FileQMStore.of(topic, fileIndexer);
 
 	TimeUtil.record();
-	QResult l = store.query(QQuery.of(topic, 0));
+	QConsume l = store.query(QQuery.of(topic, 0));
 	TimeUtil.println("query : ");
 
 	System.out.println(l.getRawData().length);

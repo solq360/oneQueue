@@ -1,8 +1,8 @@
 package com.eyu.onequeue.store;
 
+import com.eyu.onequeue.protocol.model.QConsume;
 import com.eyu.onequeue.store.model.IQMStore;
 import com.eyu.onequeue.store.model.QQuery;
-import com.eyu.onequeue.store.model.QResult;
 
 /**
  * File实现QMStore 一個 topic 对应一个 Store
@@ -34,7 +34,7 @@ public class FileQMStore implements IQMStore {
     }
 
     @Override
-    public QResult query(QQuery query) {
+    public QConsume query(QQuery query) {
 	return fileIndexer.query(query);
     }
  
