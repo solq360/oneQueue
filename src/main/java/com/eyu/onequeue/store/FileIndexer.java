@@ -3,11 +3,13 @@ package com.eyu.onequeue.store;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -33,6 +35,7 @@ public class FileIndexer {
     private AtomicLong ai = new AtomicLong();
 
     private LinkedHashMap<Long, FileOperate> indexers = new LinkedHashMap<>();
+    private LinkedHashMap<Long, FileOperate> removeRecords = new LinkedHashMap<>();
 
     ////////////////// 消息队列目的是 减少传输时数据量//////////////////////
     @JsonIgnore
@@ -66,12 +69,29 @@ public class FileIndexer {
 
     public void persist() {
 	wirteToBuffer();
+	Set<Long> removes = new HashSet<>();
 	foreachAndLockFileOperate(fileOperate -> {
 	    fileOperate.persist();
-	    if ((System.currentTimeMillis() - fileOperate.getLastOperate()) > QMServerConfig.STORE_FILE_CLOSE_INTERVAL) {
+	    final long checkTime = System.currentTimeMillis() - fileOperate.getLastOperate();
+	    if (checkTime > QMServerConfig.STORE_FILE_CLOSE_INTERVAL) {
 		FileUtil.close(fileOperate);
 	    }
+	    if (checkTime > QMServerConfig.STORE_FILE_DELETE_INTERVAL) {
+		removes.add(fileOperate.getFileNum());
+	    }
+
 	});
+	if (!removes.isEmpty()) {
+	    synchronized (this) {
+		for (long key : removes) {
+		    FileOperate fileOperate = indexers.remove(key);
+		    if (fileOperate == null) {
+			continue;
+		    }
+		    removeRecords.put(key, fileOperate);
+		}
+	    }
+	}
 	persistFileIndexer();
     }
 
@@ -83,24 +103,17 @@ public class FileIndexer {
     }
 
     public void write(Object... messages) {
-	boolean wirteQueueSucceed = false;
 	if (QMServerConfig.STORE_QUEUE_OPEN) {
 	    synchronized (persistQueueLock) {
 		// 超过队列边界大小，切换操作
 		if (persistQueue.size() + messages.length > QMServerConfig.STORE_QUEUE_PERSIST_SIZE) {
 		    wirteToBuffer();
-		    wirteQueueSucceed = false;
-		} else {
-		    Collections.addAll(persistQueue, messages);
-		    wirteQueueSucceed = true;
 		}
+		Collections.addAll(persistQueue, messages);
 	    }
-	}
-	// 没把消息加入队列，直接写入底层
-	if (!wirteQueueSucceed) {
+	} else {// 没把消息加入队列，直接写入底层
 	    write(SerialUtil.writeValueAsZipBytes(messages));
 	}
-
     }
 
     public QResult query(QQuery query) {
@@ -139,6 +152,7 @@ public class FileIndexer {
 		querySize += addCount;
 		retAddSize.addAndGet(addCount);
 
+		data = null;
 		// 防查询数据过大
 		if (retAddSize.get() >= QMServerConfig.STORE_QUEUE_MAX_SIZE) {
 		    break;
@@ -149,7 +163,6 @@ public class FileIndexer {
 		offset.set(t);
 	    }
 	});
-
 
 	int len = 0;
 	for (byte[] data : list) {
@@ -163,6 +176,7 @@ public class FileIndexer {
 	    PacketUtil.writeBytes(os, data, rawData);
 	    os += data.length;
 	}
+	list.clear();
 
 	return QResult.ofRaw(topic, offset.get(), rawData);
     }
@@ -285,6 +299,10 @@ public class FileIndexer {
 
     public synchronized LinkedHashMap<Long, FileOperate> getIndexers() {
 	return new LinkedHashMap<>(this.indexers);
+    }
+
+    public LinkedHashMap<Long, FileOperate> getRemoveRecords() {
+	return removeRecords;
     }
 
 }

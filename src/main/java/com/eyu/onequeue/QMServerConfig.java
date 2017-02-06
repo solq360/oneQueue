@@ -12,11 +12,14 @@ public interface QMServerConfig {
     final long STORE_SPLIT_SIZE = 1024 * 1024 * 64;
     /** 文件保存根文件，支持迁移 **/
     final String STORE_ROOT_PATH = "e:/qmdata/";
-    /** 自动关闭文件资源时间 间隔 **/
-    final long STORE_FILE_CLOSE_INTERVAL = 1000 * 60 * 5;
+
     /** 持久化文件时间 间隔 **/
     final long STORE_FILE_PERSIST_INTERVAL = 1000 * 10;
-
+    /** 自动关闭文件资源时间 间隔 **/
+    final long STORE_FILE_CLOSE_INTERVAL = 1000 * 60 * 5;
+    /** 删除文件资源时间 间隔 **/
+    final long STORE_FILE_DELETE_INTERVAL = 1000 * 60 * 60 * 24 * 15 ;
+    
     /** 消息缓冲队列开关 **/
     final boolean STORE_QUEUE_OPEN = true;
     /** 消息缓冲队列初始化长度 根据业务每秒支持量设置 **/

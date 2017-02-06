@@ -21,6 +21,9 @@ public class QMessageServerHandler extends TestChannelHandler {
 	if(msg instanceof QPacket){
 	    QPacket qpacket = (QPacket)msg;
 	     //入内存 持久化  推送 业务
+	    
+	    
+	    
 	}else{
 	    //什么也不做
 	}
