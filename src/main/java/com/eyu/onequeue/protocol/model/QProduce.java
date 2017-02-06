@@ -8,11 +8,16 @@ import com.eyu.onequeue.protocol.anno.QModel;
  * @author solq
  */
 @QModel(QModel.QPRODUCE)
-public class QProduce {
+public class QProduce implements IRelease {
     /** 订阅 **/
     private String t;
     /** 内容信息 **/
     private QMessage<?, ?>[] b;
+
+    @Override
+    public void release() {
+	b = null;
+    }
 
     // getter
 
@@ -27,7 +32,7 @@ public class QProduce {
     public static QProduce of(String topic, QMessage<?, ?>... qmessages) {
 	QProduce ret = new QProduce();
 	ret.t = topic;
- 	ret.b = qmessages;
+	ret.b = qmessages;
 	return ret;
     }
 

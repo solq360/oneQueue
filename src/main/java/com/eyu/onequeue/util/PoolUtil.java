@@ -3,6 +3,7 @@ package com.eyu.onequeue.util;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -41,6 +42,10 @@ public abstract class PoolUtil {
 	return Executors.newCachedThreadPool(new ThreadNamed(threadName));
     }
 
+    public static ScheduledExecutorService createScheduledPool(int corePoolSize, String threadName) {
+	return Executors.newScheduledThreadPool(corePoolSize, new ThreadNamed(threadName));
+    }
+
     public static void shutdown(ExecutorService pool, long awaitTime) {
 	pool.shutdown();
 	logger.error("开始关闭总线线程池");
@@ -54,7 +59,11 @@ public abstract class PoolUtil {
 	    }
 	} catch (InterruptedException e) {
 	    logger.error("总线线程池关闭时线程被打断,强制关闭事件总线线程池");
-	    pool.shutdownNow();
+	    try {
+		pool.shutdownNow();
+	    } catch (Exception e2) {
+		logger.error("{}", e2);
+	    }
 	}
     }
 

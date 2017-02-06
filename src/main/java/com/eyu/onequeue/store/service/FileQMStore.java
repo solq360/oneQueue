@@ -1,4 +1,4 @@
-package com.eyu.onequeue.store;
+package com.eyu.onequeue.store.service;
 
 import com.eyu.onequeue.protocol.model.QConsume;
 import com.eyu.onequeue.store.model.IQMStore;

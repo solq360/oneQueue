@@ -14,8 +14,7 @@ public interface IQMStore {
     public void save(byte[] bytes);
 
     public QConsume query(QQuery query);
-   // public QResult queryForRaw(QQuery query);
-
+ 
     public void persist();
 
     public void close();

@@ -1,4 +1,4 @@
-package com.eyu.onequeue.store;
+package com.eyu.onequeue.store.service;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-import com.eyu.onequeue.QMServerConfig;
+import com.eyu.onequeue.QMConfig;
 import com.eyu.onequeue.protocol.model.QConsume;
 import com.eyu.onequeue.store.model.QQuery;
 import com.eyu.onequeue.util.FileUtil;
@@ -47,7 +47,7 @@ public class FileIndexer {
 
     public static FileIndexer of(String topic) {
 	FileIndexer ret = null;
-	final String rootPath = QMServerConfig.getStoreRootPath(topic);
+	final String rootPath = QMConfig.getInstance().getStoreRootPath(topic);
 	String thisFileName = rootPath + FileIndexer.class.getSimpleName();
 	if (new File(thisFileName).exists()) {
 	    ret = SerialUtil.readValueAsFile(thisFileName, FileIndexer.class);
@@ -55,8 +55,8 @@ public class FileIndexer {
 	    ret = new FileIndexer();
 	    ret.topic = topic;
 	}
-	if (QMServerConfig.STORE_QUEUE_OPEN) {
-	    ret.persistQueue = new ArrayList<>(QMServerConfig.STORE_QUEUE_BUFFER_SIZE);
+	if (QMConfig.getInstance().STORE_QUEUE_OPEN) {
+	    ret.persistQueue = new ArrayList<>(QMConfig.getInstance().STORE_QUEUE_BUFFER_SIZE);
 	}
 	return ret;
     }
@@ -73,10 +73,10 @@ public class FileIndexer {
 	foreachAndLockFileOperate(fileOperate -> {
 	    fileOperate.persist();
 	    final long checkTime = System.currentTimeMillis() - fileOperate.getLastOperate();
-	    if (checkTime > QMServerConfig.STORE_FILE_CLOSE_INTERVAL) {
+	    if (checkTime > QMConfig.getInstance().STORE_FILE_CLOSE_INTERVAL) {
 		FileUtil.close(fileOperate);
 	    }
-	    if (checkTime > QMServerConfig.STORE_FILE_DELETE_INTERVAL) {
+	    if (checkTime > QMConfig.getInstance().STORE_FILE_DELETE_INTERVAL) {
 		removes.add(fileOperate.getFileNum());
 	    }
 
@@ -103,10 +103,10 @@ public class FileIndexer {
     }
 
     public void write(Object... messages) {
-	if (QMServerConfig.STORE_QUEUE_OPEN) {
+	if (QMConfig.getInstance().STORE_QUEUE_OPEN) {
 	    synchronized (persistQueueLock) {
 		// 超过队列边界大小，切换操作
-		if (persistQueue.size() + messages.length > QMServerConfig.STORE_QUEUE_PERSIST_SIZE) {
+		if (persistQueue.size() + messages.length > QMConfig.getInstance().STORE_QUEUE_PERSIST_SIZE * QMConfig.getInstance().STORE_QUEUE_BUFFER_SIZE) {
 		    wirteToBuffer();
 		}
 		Collections.addAll(persistQueue, messages);
@@ -129,7 +129,7 @@ public class FileIndexer {
 		return;
 	    }
 	    // 防查询数据过大
-	    if (retAddSize.get() >= QMServerConfig.STORE_QUEUE_MAX_SIZE) {
+	    if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
 		return;
 	    }
 
@@ -154,7 +154,7 @@ public class FileIndexer {
 
 		data = null;
 		// 防查询数据过大
-		if (retAddSize.get() >= QMServerConfig.STORE_QUEUE_MAX_SIZE) {
+		if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
 		    break;
 		}
 	    }
@@ -248,7 +248,7 @@ public class FileIndexer {
     }
 
     private void wirteToBuffer() {
-	if (!QMServerConfig.STORE_QUEUE_OPEN) {
+	if (!QMConfig.getInstance().STORE_QUEUE_OPEN) {
 	    return;
 	}
 	byte[] bytes = null;
@@ -265,14 +265,14 @@ public class FileIndexer {
     }
 
     private synchronized void persistFileIndexer() {
-	String thisFileName = QMServerConfig.getStoreRootPath(topic) + FileIndexer.class.getSimpleName();
+	String thisFileName = QMConfig.getInstance().getStoreRootPath(topic) + FileIndexer.class.getSimpleName();
 	SerialUtil.writeValueAsFile(thisFileName, this);
     }
 
     @SuppressWarnings("resource")
     private synchronized FileOperate findLastFileIndexer(int addSzie) {
 	FileOperate ret = indexers.get(ai.get());
-	while (ret == null || (ret.getSize() + addSzie) >= QMServerConfig.STORE_SPLIT_SIZE) {
+	while (ret == null || (ret.getSize() + addSzie) >= QMConfig.getInstance().STORE_SPLIT_SIZE) {
 	    long lastFileIndexer = ai.incrementAndGet();
 	    ret = indexers.get(lastFileIndexer);
 	    if (ret == null) {

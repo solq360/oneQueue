@@ -5,14 +5,13 @@ import java.util.List;
 
 import org.junit.Test;
 
+import com.eyu.onequeue.protocol.model.QConsume;
 import com.eyu.onequeue.protocol.model.QMessage;
 import com.eyu.onequeue.protocol.model.QProduce;
-import com.eyu.onequeue.protocol.model.QConsume;
-import com.eyu.onequeue.socket.handle.ConsumeHandle;
-import com.eyu.onequeue.store.FileIndexer;
-import com.eyu.onequeue.store.FileQMStore;
 import com.eyu.onequeue.store.model.IQMStore;
 import com.eyu.onequeue.store.model.QQuery;
+import com.eyu.onequeue.store.service.FileIndexer;
+import com.eyu.onequeue.store.service.FileQMStore;
 import com.eyu.onequeue.util.TimeUtil;
 import com.eyu.onqueue.message.TestMessageObject;
 
@@ -75,33 +74,12 @@ public class TestFileQMStore {
 	IQMStore store = FileQMStore.of(topic, fileIndexer);
 
 	QConsume l = store.query(QQuery.of(topic, 0));
-	
+
 	TimeUtil.record();
-	l.foreachMessageData((list)->{
+	l.foreachMessageData((list) -> {
 	    System.out.println(list.length);
 	});
 	TimeUtil.println("decode : ");
     }
- 
-    
-    @Test
-    public void test_ConsumeHandle() {
-	// 文件物理与业务逻辑层处理
-	FileIndexer fileIndexer = FileIndexer.of(topic);
-	// 应用层处理
-	IQMStore store = FileQMStore.of(topic, fileIndexer);
 
-	TimeUtil.record();
-	QConsume l = store.query(QQuery.of(topic, 0));
-	TimeUtil.println("query : ");
-
-	System.out.println(l.getRawData().length);
-
-	TimeUtil.record();
-	ConsumeHandle handle = ConsumeHandle.of((list)->{
-	   System.out.println(list.length); 
-	});
-	handle.onSucceed(l);
-	TimeUtil.println("handle : ");
-    }
 }

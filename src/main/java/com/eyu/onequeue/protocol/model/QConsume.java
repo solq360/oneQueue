@@ -13,7 +13,7 @@ import com.eyu.onequeue.util.SerialUtil;
  * @author solq
  */
 @QModel(QModel.QCONSUME)
-public class QConsume {
+public class QConsume implements IRelease, IByte {
     /**
      * 最后读取指针记录
      */
@@ -25,24 +25,32 @@ public class QConsume {
     /**
      * topic
      */
+    private byte[] topicBytes;
+
+    /**
+     * topic
+     */
     private String topic;
 
+    @Override
     public byte[] toBytes() {
-
-	byte[] topicBytes = topic.getBytes();
-	final int len = Integer.BYTES + topicBytes.length + Integer.BYTES + rawData.length + Long.BYTES;
+	final int len = toSize();
 	byte[] ret = new byte[len];
-	PacketUtil.writeInt(0, topicBytes.length, ret);
-	PacketUtil.writeBytes(Integer.BYTES, topicBytes, ret);
-	PacketUtil.writeInt(Integer.BYTES + topicBytes.length, rawData.length, ret);
-	PacketUtil.writeBytes(Integer.BYTES + topicBytes.length + Integer.BYTES, rawData, ret);
-	PacketUtil.writeLong(Integer.BYTES + topicBytes.length + Integer.BYTES + rawData.length, offset, ret);
-
+	int offset = 0;
+	PacketUtil.writeInt(offset, topicBytes.length, ret);
+	PacketUtil.writeBytes(offset += Integer.BYTES, topicBytes, ret);
+	PacketUtil.writeInt(offset += topicBytes.length, rawData.length, ret);
+	PacketUtil.writeBytes(offset += Integer.BYTES, rawData, ret);
+	PacketUtil.writeLong(offset += rawData.length, offset, ret);
 	return ret;
     }
 
-    public static QConsume byte2Object(byte[] bytes) {
+    @Override
+    public int toSize() {
+	return Integer.BYTES + topicBytes.length + Integer.BYTES + rawData.length + Long.BYTES;
+    }
 
+    public static QConsume byte2Object(byte[] bytes) {
 	final int tLen = PacketUtil.readInt(0, bytes);
 	final String topic = PacketUtil.readString(Integer.BYTES, tLen, bytes);
 	final int dataLen = PacketUtil.readInt(Integer.BYTES + tLen, bytes);
@@ -96,6 +104,9 @@ public class QConsume {
     }
 
     public String getTopic() {
+	if (topic == null) {
+	    topic = new String(topicBytes);
+	}
 	return topic;
     }
 
@@ -106,9 +117,17 @@ public class QConsume {
     public static QConsume of(String topic, long offset, byte[] rawData) {
 	QConsume ret = new QConsume();
 	ret.topic = topic;
+	ret.topicBytes = topic.getBytes();
 	ret.offset = offset;
 	ret.rawData = rawData;
 	return ret;
+    }
+
+    @Override
+    public void release() {
+	rawData = null;
+	topic = null;
+	topicBytes = null;
     }
 
 }

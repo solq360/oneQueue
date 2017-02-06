@@ -1,6 +1,7 @@
 package com.eyu.onequeue.util;
 
 import java.io.File;
+import java.lang.reflect.Type;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,8 @@ import org.slf4j.helpers.FormattingTuple;
 import org.slf4j.helpers.MessageFormatter;
 
 import com.eyu.common.utils.codec.ZlibUtils;
+import com.eyu.onequeue.exception.QCode;
+import com.eyu.onequeue.exception.QJsonException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JavaType;
@@ -40,7 +43,8 @@ public abstract class SerialUtil {
 	    FileUtil.createDirs(fileName);
 	    return MAPPER_CONVERT.readValue(new File(fileName), clz);
 	} catch (Exception e) {
-	    throw new RuntimeException(e);
+	    FormattingTuple message = MessageFormatter.format("readValueAsFile : {} ## {}", fileName, clz);
+	    throw QJsonException.of(QJsonException.class, QCode.JSON_ERROR_DECODE, message, e);
 	}
     }
 
@@ -49,7 +53,8 @@ public abstract class SerialUtil {
 	    FileUtil.createDirs(fileName);
 	    return MAPPER_CONVERT.readValue(new File(fileName), valueTypeRef);
 	} catch (Exception e) {
-	    throw new RuntimeException(e);
+	    FormattingTuple message = MessageFormatter.format("readValueAsFile : {} ## {}", fileName, valueTypeRef.getType());
+	    throw QJsonException.of(QJsonException.class, QCode.JSON_ERROR_DECODE, message, e);
 	}
     }
 
@@ -58,7 +63,8 @@ public abstract class SerialUtil {
 	    FileUtil.createDirs(fileName);
 	    MAPPER_CONVERT.writeValue(new File(fileName), value);
 	} catch (Exception e) {
-	    throw new RuntimeException(e);
+	    FormattingTuple message = MessageFormatter.format("writeValueAsFile : {} ## {}", fileName, value.getClass());
+	    throw QJsonException.of(QJsonException.class, QCode.JSON_ERROR_DECODE, message, e);
 	}
     }
 
@@ -76,7 +82,8 @@ public abstract class SerialUtil {
 	    });
 	    return future.get();
 	} catch (Exception e) {
-	    throw new RuntimeException(e);
+	    FormattingTuple message = MessageFormatter.format("readList : {} ## {}", new String(src), clz.getClass());
+	    throw QJsonException.of(QJsonException.class, QCode.JSON_ERROR_DECODE, message, e);
 	}
     }
 
@@ -88,7 +95,21 @@ public abstract class SerialUtil {
 	    JavaType type = TypeFactory.defaultInstance().constructArrayType(clz);
 	    return (T[]) MAPPER_CONVERT.readValue(src, type);
 	} catch (Exception e) {
-	    throw new RuntimeException(e);
+	    FormattingTuple message = MessageFormatter.format("readList : {} ## {}", new String(src), clz.getClass());
+	    throw QJsonException.of(QJsonException.class, QCode.JSON_ERROR_DECODE, message, e);
+	}
+    }
+
+    public static <T> T[] readArray(String src, Type type) {
+	if (src == null) {
+	    return null;
+	}
+	try {
+	    JavaType javaType = TypeFactory.defaultInstance().constructArrayType(TypeFactory.defaultInstance().constructType(type));
+	    return (T[]) MAPPER_CONVERT.readValue(src, javaType);
+	} catch (Exception e) {
+	    FormattingTuple message = MessageFormatter.format("readArray : {} ## {}", src, type);
+	    throw QJsonException.of(QJsonException.class, QCode.JSON_ERROR_DECODE, message, e);
 	}
     }
 
@@ -102,19 +123,34 @@ public abstract class SerialUtil {
 	    }
 	    return MAPPER_CONVERT.convertValue(mapData, tr);
 	} catch (Exception e) {
-	    FormattingTuple message = MessageFormatter.format("将MAP[{}]转换为[{}]时出现异常", new Object[] { mapData, tr });
-	    throw new RuntimeException(message.getMessage(), e);
+	    FormattingTuple message = MessageFormatter.format("map2Object : {} ## {}", mapData.toString(), tr.getType());
+	    throw QJsonException.of(QJsonException.class, QCode.JSON_ERROR_DECODE, message, e);
 	}
     }
 
-    public static <T> T readValue(byte[] src, Class<T> valueType) {
+    public static <T> T readValue(byte[] src, Class<T> type) {
 	if (src == null) {
 	    return null;
 	}
 	try {
-	    return MAPPER_CONVERT.readValue(src, valueType);
+	    return MAPPER_CONVERT.readValue(src, type);
 	} catch (Exception e) {
-	    throw new RuntimeException(e);
+	    FormattingTuple message = MessageFormatter.format("readValue : {} ## {}", src, type);
+	    throw QJsonException.of(QJsonException.class, QCode.JSON_ERROR_DECODE, message, e);
+	}
+    }
+
+    public static <T> T readValue(String src, Type type) {
+	if (src == null) {
+	    return null;
+	}
+	try {
+	    JavaType valueTypeRef = TypeFactory.defaultInstance().constructType(type);
+	    return MAPPER_CONVERT.readValue(src, valueTypeRef);
+	} catch (Exception e) {
+	    FormattingTuple message = MessageFormatter.format("readValue : {} ## {}", src, type);
+
+	    throw QJsonException.of(QJsonException.class, QCode.JSON_ERROR_DECODE, message, e);
 	}
     }
 
@@ -125,7 +161,8 @@ public abstract class SerialUtil {
 	try {
 	    return MAPPER_CONVERT.readValue(src, valueTypeRef);
 	} catch (Exception e) {
-	    throw new RuntimeException(e);
+	    FormattingTuple message = MessageFormatter.format("readValue : {} ## {}", new String(src), valueTypeRef.getType());
+	    throw QJsonException.of(QJsonException.class, QCode.JSON_ERROR_DECODE, message, e);
 	}
     }
 
@@ -136,7 +173,8 @@ public abstract class SerialUtil {
 	try {
 	    return MAPPER_CONVERT.readValue(ZlibUtils.unzip(src, 30, TimeUnit.SECONDS), valueType);
 	} catch (Exception e) {
-	    throw new RuntimeException(e);
+	    FormattingTuple message = MessageFormatter.format("readZipValue :  {}", valueType.getClass());
+	    throw QJsonException.of(QJsonException.class, QCode.JSON_ERROR_DECODE, message, e);
 	}
     }
 
@@ -150,7 +188,9 @@ public abstract class SerialUtil {
 	    });
 	    return future.get();
 	} catch (Exception e) {
-	    throw new RuntimeException(e);
+
+	    FormattingTuple message = MessageFormatter.format("writeValueAsBytes :  {}", obj.getClass());
+	    throw QJsonException.of(QJsonException.class, QCode.JSON_ERROR_DECODE, message, e);
 	}
     }
 
@@ -162,7 +202,8 @@ public abstract class SerialUtil {
 	try {
 	    return MAPPER_CONVERT.writeValueAsString(obj);
 	} catch (JsonProcessingException e) {
-	    throw new RuntimeException(e);
+	    FormattingTuple message = MessageFormatter.format("writeValueAsString :  {}", obj.getClass());
+	    throw QJsonException.of(QJsonException.class, QCode.JSON_ERROR_DECODE, message, e);
 	}
     }
 

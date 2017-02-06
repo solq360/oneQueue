@@ -1,16 +1,15 @@
-package com.eyu.onequeue.store;
+package com.eyu.onequeue.store.service;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
-import javax.annotation.PostConstruct;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Service;
 
-import com.eyu.onequeue.QMServerConfig;
+import com.eyu.onequeue.QMConfig;
 import com.eyu.onequeue.protocol.model.QConsume;
 import com.eyu.onequeue.store.model.IQMStore;
 import com.eyu.onequeue.store.model.IQMStoreService;
@@ -24,12 +23,11 @@ import com.eyu.onequeue.util.PoolUtil;
  * @author solq
  */
 @Service
-public class QMStoreService implements IQMStoreService, IStoreMBean {
+public class QMStoreService implements IQMStoreService, IStoreMBean, InitializingBean {
     private final static Logger logger = LoggerFactory.getLogger(QMStoreService.class);
-
     private Map<String, IQMStore> stores = new HashMap<>();
     private int useStoreCount = 0;
-    private static ExecutorService pool = PoolUtil.createPool(Runtime.getRuntime().availableProcessors() * 6, 60 * 2, "fileStore");
+    private static ExecutorService pool = PoolUtil.createPool(QMConfig.getInstance().POOL_STORE_CORE, 60 * 2, "fileStore");
     private volatile boolean closed = false;
 
     private Thread monitor = new Thread(new Runnable() {
@@ -37,18 +35,20 @@ public class QMStoreService implements IQMStoreService, IStoreMBean {
 	@Override
 	public void run() {
 	    while (!closed) {
-		persist();
 		try {
-		    Thread.sleep(QMServerConfig.STORE_FILE_PERSIST_INTERVAL);
+		    Thread.sleep(QMConfig.getInstance().STORE_FILE_PERSIST_INTERVAL);
 		} catch (InterruptedException e) {
-		    e.printStackTrace();
 		}
+		if (!closed) {
+		    break;
+		}
+		persist();
 	    }
 	}
     }, "qm message persist monitor");
 
-    @PostConstruct
-    private void postConstruct() {
+    @Override
+    public void afterPropertiesSet() throws Exception {
 	monitor.setDaemon(true);
 	monitor.start();
     }
@@ -79,6 +79,7 @@ public class QMStoreService implements IQMStoreService, IStoreMBean {
 	    return;
 	}
 	closed = true;
+ 
 	Map<String, IQMStore> stores = getStores();
 	for (IQMStore store : stores.values()) {
 	    execute(() -> store.close());
@@ -121,4 +122,5 @@ public class QMStoreService implements IQMStoreService, IStoreMBean {
 	}
 	return ret;
     }
+
 }

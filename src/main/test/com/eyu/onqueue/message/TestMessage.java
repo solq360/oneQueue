@@ -42,9 +42,8 @@ public class TestMessage {
 
 	byte[] zbody = SerialUtil.writeValueAsZipBytes(qm);
 	System.out.println("压缩的大小 : " + zbody.length);
-
-	short s = 0;
-	QPacket qp = QPacket.of(s, 5000, 1, body);
+	byte c =1;
+ 	QPacket qp = QPacket.of(c, 5000, 1, body);
 
     }
 
@@ -71,14 +70,14 @@ public class TestMessage {
 	QProduce qm = ofProduce();
 	byte[] body = SerialUtil.writeValueAsZipBytes(qm);
 
-	short s = 1;
-	QPacket qp = QPacket.of(s, 1234567891011L, 123456789101112L, body);
+	byte c =1;
+	QPacket qp = QPacket.of(c, 1234567891011L, 123456789101112L, body);
 	System.out.println("QPacket : " + qp.getSn());
 
 	byte[] bytes = qp.toBytes();
 	System.out.println("QPacket to bytes : " + bytes.length);
 
-	qp = QPacket.byte2Packet(bytes);
+	qp = QPacket.of(bytes);
 	System.out.println("bytes to QPacket : " + qp.getC());
 	System.out.println("bytes to QPacket : " + qp.getSn());
 	System.out.println("bytes to QPacket : " + qp.getSid());

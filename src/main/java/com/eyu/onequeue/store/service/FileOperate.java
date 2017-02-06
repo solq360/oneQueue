@@ -1,11 +1,11 @@
-package com.eyu.onequeue.store;
+package com.eyu.onequeue.store.service;
 
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 
-import com.eyu.onequeue.QMServerConfig;
+import com.eyu.onequeue.QMConfig;
 import com.eyu.onequeue.util.FileUtil;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -139,10 +139,10 @@ public class FileOperate implements AutoCloseable {
 		}
 		RandomAccessFile rf = null;
 		try {
-			String fileName = QMServerConfig.getStoreFilePath(topic, fileNum);
+			String fileName = QMConfig.getInstance().getStoreFilePath(topic, fileNum);
 			rf = new RandomAccessFile(fileName, "rw");
 			ch = rf.getChannel();
-			mbb = ch.map(MapMode.READ_WRITE, 0, QMServerConfig.STORE_SPLIT_SIZE);
+			mbb = ch.map(MapMode.READ_WRITE, 0, QMConfig.getInstance().STORE_SPLIT_SIZE);
 			change = false;
 			lastOperate = System.currentTimeMillis();
 		} catch (Exception e) {

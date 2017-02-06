@@ -3,8 +3,8 @@ package com.eyu.onqueue.other;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.eyu.onequeue.store.FileIndexer;
-import com.eyu.onequeue.store.FileQMStore;
+import com.eyu.onequeue.store.service.FileIndexer;
+import com.eyu.onequeue.store.service.FileQMStore;
 
 public class TestParallelStream{
 //http://www.tuicool.com/articles/bIrYJvz

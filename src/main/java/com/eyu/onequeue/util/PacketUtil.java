@@ -11,7 +11,7 @@ public abstract class PacketUtil {
     /**
      * 包固定长度
      */
-    public final static int PACK_FIXED_LENG = Long.BYTES + Short.BYTES + Long.BYTES;
+    public final static int PACK_FIXED_LENG = Long.BYTES + Byte.BYTES + Long.BYTES;
 
     // 用long类型做 id 如果每秒10W处理，可以N天才轮回一次
     private final static AtomicLong sn = new AtomicLong();
@@ -23,10 +23,6 @@ public abstract class PacketUtil {
 	    sn.lazySet(0);
 	}
 	return next;
-    }
-
-    public static long getSessionId() {
-	return getSn();
     }
 
     public static Double toMSize(int length) {
@@ -63,6 +59,14 @@ public abstract class PacketUtil {
 	for (int i = 0; i < v.length; offset++, i++) {
 	    ret[offset] = v[i];
 	}
+    }
+
+    public static void writeByte(int offset, byte b, byte[] ret) {
+	ret[offset] = b;
+    }
+
+    public static byte readByte(int offset, byte[] ret) {
+	return ret[offset];
     }
 
     public static long readLong(int offset, byte[] bytes) {

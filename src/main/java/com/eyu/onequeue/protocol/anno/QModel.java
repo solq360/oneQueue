@@ -9,8 +9,10 @@ import java.lang.annotation.Target;
 @Target(TYPE)
 @Retention(RUNTIME)
 public @interface QModel {
-    short value();
+    byte value();
     
-    public static final short QPRODUCE =1;
-    public static final short QCONSUME =2;
+    public static final byte QPRODUCE =1;
+    public static final byte QCONSUME =2;
+    public static final byte QRPC =3;
+    public static final byte QCODE =4;
 }

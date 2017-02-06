@@ -49,7 +49,7 @@ public class Subscribe {
 
 	public void push(QConsume result) {
 		QNode node = findNode();
-		node.sendSync(QPacket.result2Packet(result));
+		node.sendSync(QPacket.of(result));
 		// 推送成功记录
 		this.offset = Math.max(result.getOffset(), offset);
 	}
@@ -78,6 +78,10 @@ public class Subscribe {
 
 	public String getTopic() {
 		return topic;
+	}
+
+	public List<QNode> getNodes() {
+	    return nodes;
 	}
 
 	public String getGroupId() {
