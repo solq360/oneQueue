@@ -5,7 +5,7 @@ import com.eyu.onequeue.store.model.QQuery;
 import com.eyu.onequeue.store.model.QResult;
 
 /**
- * File实现QMStore 一個 topic 对于一个 Store
+ * File实现QMStore 一個 topic 对应一个 Store
  * 
  * @author solq
  */
@@ -37,11 +37,7 @@ public class FileQMStore implements IQMStore {
     public QResult query(QQuery query) {
 	return fileIndexer.query(query);
     }
-
-//    @Override
-//    public QResult queryForRaw(QQuery query) {
-//	return fileIndexer.queryForRaw(query);
-//    }
+ 
 
     @Override
     public void persist() {

@@ -19,7 +19,6 @@ public class QResult {
      * 最后读取指针记录
      */
     private long offset;
-
     /**
      * 返回raw数据
      */
@@ -78,7 +77,8 @@ public class QResult {
 		} else {
 		    action.accept(t);
 		}
-
+		t = null;
+		tBytes = null;
 	    } catch (Exception e) {
 		e.printStackTrace();
 	    }
@@ -89,7 +89,7 @@ public class QResult {
 	}
 	return ret;
     }
- 
+
     // getter
 
     public long getOffset() {
