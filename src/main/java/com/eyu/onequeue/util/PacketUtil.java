@@ -7,15 +7,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author solq
  */
 public abstract class PacketUtil {
-
-    /**
-     * 包固定长度
-     */
-    public final static int PACK_FIXED_LENG = Long.BYTES + Byte.BYTES + Long.BYTES;
-
     // 用long类型做 id 如果每秒10W处理，可以N天才轮回一次
     private final static AtomicLong sn = new AtomicLong();
-    private static long SN_MAX = Long.MAX_VALUE ^ 0x0;
+    private final static long SN_MAX = Long.MAX_VALUE ^ 0x0;
 
     public static long getSn() {
 	long next = sn.getAndIncrement();
@@ -105,6 +99,15 @@ public abstract class PacketUtil {
 
     public static String readString(int offset, int len, byte[] bytes) {
 	return new String(readBytes(offset, len, bytes));
+    }
+
+    public static long byte2Long(byte[] bytes) {
+	long ret = 0;
+	int len = bytes.length;
+	for (byte b : bytes) {
+	    ret += b << (--len) * 8;
+	}
+	return ret;
     }
 
 }

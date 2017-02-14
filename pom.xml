@@ -13,62 +13,63 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.encoding>UTF-8</maven.compiler.encoding>
 		<project.build.jdk>1.8</project.build.jdk>
-		<common.version>3.5</common.version>
+
+
+
+		<netty.version>4.1.8.Final</netty.version>
+		<slf4j.version>1.7.21</slf4j.version>
+		<jackson.version>2.2.3</jackson.version>
+		<apacheCommons.version>3.5</apacheCommons.version>
+		<javassist.version>3.18.2-GA</javassist.version>
 
 	</properties>
 
 	<dependencies>
-		<!-- commons -->
-
 		<dependency>
-			<groupId>com.eyu.common</groupId>
-			<artifactId>common-utils</artifactId>
-			<version>${common.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.eyu.common</groupId>
-			<artifactId>common-socket</artifactId>
-			<version>${common.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.eyu.common</groupId>
-			<artifactId>common-protocol</artifactId>
-			<version>${common.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.eyu.common</groupId>
-			<artifactId>common-scheduler</artifactId>
-			<version>${common.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.eyu.common</groupId>
-			<artifactId>common-ramcache</artifactId>
-			<version>${common.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.eyu.common</groupId>
-			<artifactId>common-resource</artifactId>
-			<version>${common.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.eyu.common</groupId>
-			<artifactId>common-console</artifactId>
-			<version>${common.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.eyu.common</groupId>
-			<artifactId>common-event</artifactId>
-			<version>${common.version}</version>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-all</artifactId>
+			<version>${netty.version}</version>
 		</dependency>
 
+		<dependency>
+			<groupId>org.javassist</groupId>
+			<artifactId>javassist</artifactId>
+			<version>${javassist.version}</version>
+		</dependency>
+<!-- 		<dependency>
+			<groupId>org.aspectj</groupId>
+			<artifactId>aspectjweaver</artifactId>
+			<version>${aspject.version}</version>
+		</dependency> -->
+
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>${apacheCommons.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>${jackson.version}</version>
+		</dependency>
+ 
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.9</version>
 			<scope>test</scope>
 		</dependency>
-
-
 	</dependencies>
 	<build>
 		<finalName>${project.artifactId}</finalName>

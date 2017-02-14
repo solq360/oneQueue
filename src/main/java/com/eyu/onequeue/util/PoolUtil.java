@@ -11,7 +11,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+/**
+ * @author solq
+ **/
 public abstract class PoolUtil {
     private static final Logger logger = LoggerFactory.getLogger(PoolUtil.class);
 
@@ -47,9 +49,9 @@ public abstract class PoolUtil {
     }
 
     public static void shutdown(ExecutorService pool, long awaitTime) {
-	pool.shutdown();
 	logger.error("开始关闭总线线程池");
 	try {
+	    pool.shutdown();
 	    if (!pool.awaitTermination(awaitTime, TimeUnit.SECONDS)) {
 		logger.error("无法在预计时间内完成事件总线线程池关闭,尝试强行关闭");
 		pool.shutdownNow();

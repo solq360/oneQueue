@@ -5,7 +5,9 @@ import com.eyu.onequeue.socket.model.IByteDecoder;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-
+/**
+ * @author solq
+ **/
 public class ByteToMessageDecoder extends LengthFieldBasedFrameDecoder implements IByteDecoder<ByteBuf> {
 
     public ByteToMessageDecoder(int maxFrameLength) {

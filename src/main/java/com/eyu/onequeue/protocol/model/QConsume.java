@@ -5,15 +5,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import com.eyu.onequeue.protocol.anno.QModel;
+import com.eyu.onequeue.protocol.anno.QOpCode;
 import com.eyu.onequeue.util.PacketUtil;
 import com.eyu.onequeue.util.SerialUtil;
 
 /**
  * @author solq
  */
-@QModel(QModel.QCONSUME)
-public class QConsume implements IRelease, IByte {
+@QOpCode(QOpCode.QCONSUME)
+public class QConsume implements IRecycle, IByte {
     /**
      * 最后读取指针记录
      */
@@ -63,6 +63,10 @@ public class QConsume implements IRelease, IByte {
 	rawToMessageData(action);
     }
 
+    /***
+     * 建议使用 foreachMessageData
+     * */
+    @Deprecated
     public List<QMessage<?, ?>> toMessageData() {
 	return rawToMessageData(null);
     }
@@ -124,7 +128,7 @@ public class QConsume implements IRelease, IByte {
     }
 
     @Override
-    public void release() {
+    public void recycle() {
 	rawData = null;
 	topic = null;
 	topicBytes = null;

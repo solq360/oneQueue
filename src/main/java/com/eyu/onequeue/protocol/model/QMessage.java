@@ -8,8 +8,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 /***
- * 队列消息
- * 
+ * 消息
  * @author solq
  */
 @JsonInclude(Include.NON_EMPTY)

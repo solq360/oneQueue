@@ -1,5 +1,7 @@
 package com.eyu.onequeue.util;
-
+/**
+ * @author solq
+ **/
 public abstract class TimeUtil {
 
     private static ThreadLocal<Long> local = new ThreadLocal<>();

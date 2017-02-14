@@ -6,23 +6,26 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.stereotype.Service;
-
 import com.eyu.onequeue.QMConfig;
+import com.eyu.onequeue.protocol.model.IQService;
 import com.eyu.onequeue.socket.model.QNode;
+import com.eyu.onequeue.store.model.IQStoreService;
 import com.eyu.onequeue.util.PoolUtil;
 import com.eyu.onequeue.util.SerialUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 
-@Service
-public class QPushManager implements InitializingBean {
+/**
+ * @author solq
+ **/
+public class QPushManager implements IQService {
+    private final static ExecutorService pool = PoolUtil.createPool(QMConfig.getInstance().POOL_PUSH_CORE, 60, "PushMonitor");
+    private volatile boolean initializer = false;
+    private volatile boolean closed = false;
+    
+    private IQStoreService storeService;
 
     private Map<String, Subscribe> subs = new HashMap<>();
-
-    private volatile boolean closed = false;
     private long lastPersistRecord = System.currentTimeMillis();
-
     private Thread processPushThread = new Thread(new Runnable() {
 
 	@Override
@@ -33,25 +36,17 @@ public class QPushManager implements InitializingBean {
 		} catch (InterruptedException e) {
 
 		}
-		if (!closed) {
+		if (closed) {
 		    break;
 		}
 		Map<String, Subscribe> subs = getSubs();
 		for (Entry<String, Subscribe> entry : subs.entrySet()) {
 		    pool.submit(() -> {
-			if (!closed) {
+			if (closed) {
 			    return;
 			}
 			Subscribe sub = entry.getValue();
-			if (sub.getNodes().isEmpty()) {
-			    return;
-			}
-			synchronized (sub) {
-			    if (sub.getNodes().isEmpty()) {
-				return;
-			    }
-			    sub.push();
-			}
+			sub.push(storeService);
 		    });
 		}
 
@@ -64,37 +59,37 @@ public class QPushManager implements InitializingBean {
 	}
     }, "processPushThread");
 
-    private static ExecutorService pool = PoolUtil.createPool(QMConfig.getInstance().POOL_PUSH_CORE, 60, "PushMonitor");
+    public QPushManager(IQStoreService storeService) {
+	this.storeService = storeService;
+    }
 
     public void registerNode(String topic, String groupId, QNode node) {
 	Subscribe sub = getSub(topic, groupId);
-	synchronized (sub) {
-	    sub.addNode(node);
-	}
+	sub.addNode(node);
     }
 
     public void removeNode(String topic, String groupId, QNode node) {
 	Subscribe sub = getSub(topic, groupId);
-	synchronized (sub) {
-	    sub.removeNode(node);
-	}
+	sub.removeNode(node);
     }
 
     public void removeNode(QNode node) {
 	Map<String, Subscribe> subs = getSubs();
 	for (Subscribe sub : subs.values()) {
-	    synchronized (sub) {
-		sub.removeNode(node);
-	    }
+	    sub.removeNode(node);
 	}
     }
 
     @Override
-    public void afterPropertiesSet() throws Exception {
+    public void start() {
+	if(initializer){
+	    return;
+	}
+	initializer = true;
+	closed =false;
 	processPushThread.setDaemon(true);
 	processPushThread.start();
-
-	String thisFileName = QMConfig.getInstance().PUSH_PERSIST_FILE;
+ 	String thisFileName = QMConfig.getInstance().getPushPersistPath();
 	if (new File(thisFileName).exists()) {
 	    subs = SerialUtil.readValueAsFile(thisFileName, new TypeReference<HashMap<String, Subscribe>>() {
 	    });
@@ -105,6 +100,7 @@ public class QPushManager implements InitializingBean {
 	if (closed) {
 	    return;
 	}
+	initializer = false;
 	closed = true;
 	PoolUtil.shutdown(pool, 60);
 	persist();
@@ -112,7 +108,7 @@ public class QPushManager implements InitializingBean {
 
     //////////////////////////////////////////////////
     private synchronized void persist() {
-	String thisFileName = QMConfig.getInstance().PUSH_PERSIST_FILE;
+	String thisFileName = QMConfig.getInstance().getPushPersistPath();;
 	SerialUtil.writeValueAsFile(thisFileName, subs);
     }
 
@@ -123,7 +119,7 @@ public class QPushManager implements InitializingBean {
 	    return ret;
 	}
 	synchronized (this) {
-	    ret = subs.get(groupId);
+	    ret = subs.get(key);
 	    if (ret != null) {
 		return ret;
 	    }

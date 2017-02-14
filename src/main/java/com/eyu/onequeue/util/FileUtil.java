@@ -4,7 +4,9 @@ import java.io.File;
 import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-
+/**
+ * @author solq
+ **/
 public abstract class FileUtil {
 
     public static void createDirs(String fileName) {

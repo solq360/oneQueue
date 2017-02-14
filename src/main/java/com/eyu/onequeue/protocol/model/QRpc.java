@@ -3,76 +3,88 @@ package com.eyu.onequeue.protocol.model;
 import com.eyu.onequeue.util.PacketUtil;
 
 /**
+ * <p>
+ * 2byte model 1byte command + 4byte indexs len + indexs + params + 1byte
+ * compress
+ * </p>
  * 
  * @author solq
  */
-public class QRpc implements IRelease, IByte {
-    /** 指令号 **/
-    private short command;
-    /** 参数信息 **/
+public class QRpc implements IRecycle, IByte {
+
+    private short model;
+    private byte command;
+
+    private byte[] indexs;
     private byte[] params;
-    /** 转发目标nodes **/
-    private byte[] nodes;
+    private byte compress;
 
     public byte[] toBytes() {
-	final int nodeLen = nodes == null ? 0 : nodes.length;
 	byte[] ret = new byte[toSize()];
 	int offset = 0;
-	PacketUtil.writeShort(offset, command, ret);
-	PacketUtil.writeShort(offset += Short.BYTES, (short) params.length, ret);
-	PacketUtil.writeBytes(offset += Short.BYTES, params, ret);
-	PacketUtil.writeShort(offset += params.length, (short) nodeLen, ret);
-	if (nodeLen > 0) {
-	    PacketUtil.writeBytes(offset += Short.BYTES, nodes, ret);
-	}
+	PacketUtil.writeShort(offset, model, ret);
+	PacketUtil.writeByte(offset += Short.BYTES, command, ret);
+	PacketUtil.writeInt(offset += Byte.BYTES, indexs.length, ret);
+	PacketUtil.writeBytes(offset += Integer.BYTES, indexs, ret);
+	PacketUtil.writeBytes(offset += indexs.length, params, ret);
+	PacketUtil.writeByte(offset += params.length, compress, ret);
+
 	return ret;
     }
 
     @Override
     public int toSize() {
-	final int nodeLen = nodes == null ? 0 : nodes.length;
-	return Short.BYTES + Short.BYTES + params.length + Short.BYTES + nodeLen;
+	return 2 + 1 + 4 + indexs.length + params.length + 1;
     }
 
     public static QRpc toObject(byte[] bytes) {
 	int offset = 0;
-	short command = PacketUtil.readShort(offset, bytes);
-	final short paramsLen = PacketUtil.readShort(offset += Short.BYTES, bytes);
-	byte[] params = PacketUtil.readBytes(offset += Short.BYTES, paramsLen, bytes);
-	final short nodesLen = PacketUtil.readShort(offset += params.length, bytes);
-	byte[] nodes = null;
-	if (nodesLen > 0) {
-	    nodes = PacketUtil.readBytes(offset += Short.BYTES, nodesLen, bytes);
-	}
-	return of(command, params, nodes);
+	short model = PacketUtil.readShort(offset, bytes);
+	byte command = PacketUtil.readByte(offset += Short.BYTES, bytes);
+	final int indexLen = PacketUtil.readInt(offset += Byte.BYTES, bytes);
+	byte[] indexs = PacketUtil.readBytes(offset += Integer.BYTES, indexLen, bytes);
+	byte[] params = PacketUtil.readBytes(offset += indexs.length, bytes.length - offset - 1, bytes);
+
+	byte compress = PacketUtil.readByte(offset += params.length, bytes);
+
+	return of(model, command, indexs, params, compress);
     }
 
-    public static QRpc of(short command, byte[] params, byte[] nodes) {
+    public static QRpc of(short model, byte command, byte[] indexs, byte[] params, byte compress) {
 	QRpc ret = new QRpc();
+	ret.model = model;
 	ret.command = command;
+	ret.indexs = indexs;
 	ret.params = params;
-	ret.nodes = nodes;
+	ret.compress = compress;
 	return ret;
     }
 
     // getter
 
-    public short getCommand() {
-	return command;
-    }
-
     public byte[] getParams() {
 	return params;
     }
 
-    public byte[] getNodes() {
-	return nodes;
+    public short getModel() {
+	return model;
+    }
+
+    public byte getCommand() {
+	return command;
+    }
+
+    public byte[] getIndexs() {
+	return indexs;
+    }
+
+    public byte getCompress() {
+	return compress;
     }
 
     @Override
-    public void release() {
+    public void recycle() {
 	params = null;
-	nodes = null;
     }
 
 }

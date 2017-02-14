@@ -15,6 +15,8 @@ import java.util.function.Consumer;
 
 import com.eyu.onequeue.QMConfig;
 import com.eyu.onequeue.protocol.model.QConsume;
+import com.eyu.onequeue.protocol.model.QMessage;
+import com.eyu.onequeue.protocol.model.QProduce;
 import com.eyu.onequeue.store.model.QQuery;
 import com.eyu.onequeue.util.FileUtil;
 import com.eyu.onequeue.util.PacketUtil;
@@ -117,69 +119,121 @@ public class FileIndexer {
     }
 
     public QConsume query(QQuery query) {
-	List<byte[]> list = new LinkedList<>();
-	AtomicLong offset = new AtomicLong();
-	AtomicLong retAddSize = new AtomicLong();
+ 	List<byte[]> list = new LinkedList<>();
+ 	AtomicLong offset = new AtomicLong();
+ 	AtomicLong retAddSize = new AtomicLong();
 
-	final long start = query.getStartOffset();
+ 	final long start = query.getStartOffset();
+ 	foreachAndLockFileOperate(fileOperate -> {
+ 	    // 已读数据过滤
+ 	    if (start >= fileOperate.toOffset()) {
+ 		return;
+ 	    }
+ 	    // 防查询数据过大
+ 	    if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
+ 		return;
+ 	    }
 
-	foreachAndLockFileOperate(fileOperate -> {
-	    // 已读数据过滤
-	    if (start >= fileOperate.toOffset()) {
-		return;
-	    }
-	    // 防查询数据过大
-	    if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
-		return;
-	    }
+ 	    fileOperate.readyReadNext(start);
+ 	    long querySize = 0;
+ 	    while (true) {
+ 		byte[] data = null;
+ 		try {
+ 		    data = fileOperate.next();
+ 		} catch (Exception e) {
+ 		    e.printStackTrace();
+ 		    break;
+ 		}
+ 		if (data == null) {
+ 		    break;
+ 		}
 
-	    fileOperate.readyReadNext(start);
-	    byte[] data = null;
-	    long querySize = 0;
-	    while (true) {
-		try {
-		    data = fileOperate.next();
-		} catch (Exception e) {
-		    e.printStackTrace();
-		    break;
-		}
-		if (data == null) {
-		    break;
-		}
+ 		list.add(data);
+ 		int addCount = data.length + 4;
+ 		querySize += addCount;
+ 		retAddSize.addAndGet(addCount);
 
-		list.add(data);
-		int addCount = data.length + 4;
-		querySize += addCount;
-		retAddSize.addAndGet(addCount);
+ 		data = null;
+ 		// 防查询数据过大
+ 		if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
+ 		    break;
+ 		}
+ 	    }
+ 	    long t = fileOperate.getFiexdOffset() + querySize;
+ 	    if (t > offset.get()) {
+ 		offset.set(t);
+ 	    }
+ 	});
+ 	
+ 	int len = 0;
+ 	for (byte[] data : list) {
+ 	    len += data.length + 4;
+ 	}
+ 	byte[] rawData = new byte[len];
+ 	int os = 0;
+ 	for (byte[] data : list) {
+ 	    PacketUtil.writeInt(os, data.length, rawData);
+ 	    os += 4;
+ 	    PacketUtil.writeBytes(os, data, rawData);
+ 	    os += data.length;
+ 	}
+ 	list.clear();
 
-		data = null;
-		// 防查询数据过大
-		if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
-		    break;
-		}
-	    }
-	    long t = fileOperate.getFiexdOffset() + querySize;
-	    if (t > offset.get()) {
-		offset.set(t);
-	    }
-	});
+ 	return QConsume.of(topic, offset.get(), rawData);
+     }
 
-	int len = 0;
-	for (byte[] data : list) {
-	    len += data.length + 4;
-	}
-	byte[] rawData = new byte[len];
-	int os = 0;
-	for (byte[] data : list) {
-	    PacketUtil.writeInt(os, data.length, rawData);
-	    os += 4;
-	    PacketUtil.writeBytes(os, data, rawData);
-	    os += data.length;
-	}
-	list.clear();
+    
+    public QProduce queryForProduce(QQuery query) {
+ 	List<QMessage<?, ?>> list = new LinkedList<>();
+ 	AtomicLong offset = new AtomicLong();
+ 	AtomicLong retAddSize = new AtomicLong();
 
-	return QConsume.of(topic, offset.get(), rawData);
-    }
+ 	final long start = query.getStartOffset();
+
+ 	foreachAndLockFileOperate(fileOperate -> {
+ 	    // 已读数据过滤
+ 	    if (start >= fileOperate.toOffset()) {
+ 		return;
+ 	    }
+ 	    // 防查询数据过大
+ 	    if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
+ 		return;
+ 	    }
+
+ 	    fileOperate.readyReadNext(start);
+ 	    long querySize = 0;
+ 	    while (true) {
+ 	 	byte[] data = null;
+ 		try {
+ 		    data = fileOperate.next();
+ 		} catch (Exception e) {
+ 		    e.printStackTrace();
+ 		    break;
+ 		}
+ 		if (data == null) {
+ 		    break;
+ 		}
+
+ 		list.add(SerialUtil.readZipValue(data, QMessage.class));
+ 		int addCount = data.length + 4;
+ 		querySize += addCount;
+ 		retAddSize.addAndGet(addCount);
+
+ 		data = null;
+ 		// 防查询数据过大
+ 		if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
+ 		    break;
+ 		}
+ 	    }
+ 	    long t = fileOperate.getFiexdOffset() + querySize;
+ 	    if (t > offset.get()) {
+ 		offset.set(t);
+ 	    }
+ 	});
+ 	QProduce ret = QProduce.of(topic, list.toArray(new QMessage[list.size()])); 
+ 	ret.setOffset(offset.get());
+ 	return ret; 
+     }
 
     // public QResult queryForRaw(QQuery query) {
     // List<byte[]> list = new LinkedList<>();

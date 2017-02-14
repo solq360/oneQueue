@@ -5,7 +5,9 @@ import com.eyu.onequeue.protocol.model.QPacket;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
-
+/**
+ * @author solq
+ **/
 public class MessageToByteHandler extends MessageToByteEncoder<Object> {
 
     @Override

@@ -139,7 +139,9 @@ public class FileOperate implements AutoCloseable {
 		}
 		RandomAccessFile rf = null;
 		try {
-			String fileName = QMConfig.getInstance().getStoreFilePath(topic, fileNum);
+			String fileName = QMConfig.getInstance().buildStoreFilePath(topic, fileNum);
+			FileUtil.createDirs(fileName);
+
 			rf = new RandomAccessFile(fileName, "rw");
 			ch = rf.getChannel();
 			mbb = ch.map(MapMode.READ_WRITE, 0, QMConfig.getInstance().STORE_SPLIT_SIZE);

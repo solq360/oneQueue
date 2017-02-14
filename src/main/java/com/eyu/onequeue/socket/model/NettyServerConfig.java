@@ -1,5 +1,6 @@
 package com.eyu.onequeue.socket.model;
 
+import java.util.Collections;
 import java.util.Map;
 
 import com.eyu.onequeue.QMConfig;
@@ -7,25 +8,35 @@ import com.eyu.onequeue.QMConfig;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.socket.ServerSocketChannel;
 
+/**
+ * @author solq
+ **/
 public class NettyServerConfig {
     private int port;
-    private boolean block;
 
     private int bossGroupThread;
     private int workerGroupThread;
     private Map<ChannelOption<?>, ?> sessionOptions;
+    private Map<ChannelOption<?>, ?> childSessionOptions;
     private Class<? extends ServerSocketChannel> acceptor;
+
     // getter
     public int getPort() {
 	return port;
     }
 
-    public boolean isBlock() {
-	return block;
+    public Map<ChannelOption<?>, ?> getSessionOptions() {
+	if (sessionOptions == null) {
+	    return null;
+	}
+	return Collections.unmodifiableMap(sessionOptions);
     }
 
-    public Map<ChannelOption<?>, ?> getSessionOptions() {
-	return sessionOptions;
+    public Map<ChannelOption<?>, ?> getChildSessionOptions() {
+	if (childSessionOptions == null) {
+	    return null;
+	}
+	return Collections.unmodifiableMap(childSessionOptions);
     }
 
     public int getBossGroupThread() {
@@ -37,20 +48,21 @@ public class NettyServerConfig {
     }
 
     public Class<? extends ServerSocketChannel> getAcceptor() {
-        return acceptor;
+	return acceptor;
     }
 
     public static NettyServerConfig of() {
 	return QMConfig.getInstance().buildServerConfig();
     }
 
-    public static NettyServerConfig of(int port, boolean block, int bossGroupThread, int workerGroupThread, Map<ChannelOption<?>, ?> sessionOptions,Class<? extends ServerSocketChannel> acceptor) {
+    public static NettyServerConfig of(int port, int bossGroupThread, int workerGroupThread, Map<ChannelOption<?>, ?> sessionOptions, Map<ChannelOption<?>, ?> childSessionOptions,
+	    Class<? extends ServerSocketChannel> acceptor) {
 	NettyServerConfig ret = new NettyServerConfig();
 	ret.port = port;
-	ret.block = block;
 	ret.bossGroupThread = bossGroupThread;
 	ret.workerGroupThread = workerGroupThread;
 	ret.sessionOptions = sessionOptions;
+	ret.childSessionOptions = childSessionOptions;
 	ret.acceptor = acceptor;
 	return ret;
     }

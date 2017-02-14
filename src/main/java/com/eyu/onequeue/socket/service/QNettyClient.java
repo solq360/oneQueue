@@ -1,29 +1,31 @@
 package com.eyu.onequeue.socket.service;
 
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.Map.Entry;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.helpers.FormattingTuple;
-import org.slf4j.helpers.MessageFormatter;
 
-import com.eyu.onequeue.exception.QCode;
-import com.eyu.onequeue.exception.QSocketException;
+import com.eyu.onequeue.QMConfig;
+import com.eyu.onequeue.callback.model.IQCallback;
+import com.eyu.onequeue.socket.model.IQSocket;
 import com.eyu.onequeue.socket.model.NettyClientConfig;
+import com.eyu.onequeue.socket.model.QNode;
+import com.eyu.onequeue.socket.model.QSession;
+import com.eyu.onequeue.util.NettyUtil;
+import com.eyu.onequeue.util.QFactoryUtil;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 
-public class QNettyClient {
+/**
+ * @author solq
+ **/
+public class QNettyClient implements IQSocket {
 
     private static final Logger logger = LoggerFactory.getLogger(QNettyClient.class);
 
@@ -43,6 +45,7 @@ public class QNettyClient {
 	return ret;
     }
 
+    @Override
     public void start() {
 	if (initializer) {
 	    return;
@@ -61,30 +64,75 @@ public class QNettyClient {
 		bootstrap.option(key, value);
 	    }
 	}
+
+	QFactoryUtil.putValue(QFactoryUtil.CLIENT_DEFAULT_BOOTSTRAP, bootstrap);
     }
 
-    public void connect(String address) {
-	try {
-	    SocketAddress socketAddress = toInetSocketAddress(address);
-	    ChannelFuture future = bootstrap.connect(socketAddress);
-	    boolean done = future.await(config.getConnectTimeout());
-	    if (!done) {
-		FormattingTuple msg = MessageFormatter.format("与服务器[{}]连接超时!!!", address);
-		throw QSocketException.of(QSocketException.class, QCode.SOCKET_ERROR_CONNECT_TIMEOUT, msg, null);
-	    }
-	    Channel channel = future.channel();
-	    if (channel == null || !channel.isActive()) {
-		FormattingTuple msg = MessageFormatter.format("连接服务器[{}]失败!!!", address);
-		throw QSocketException.of(QSocketException.class, QCode.SOCKET_ERROR_CONNECT, msg, null);
-	    }
+    @Override
+    public QNode connect(String address, String id) {
 
-	    logger.warn("start QNettyClient : " + socketAddress);
-	} catch (InterruptedException e) {
-	    e.printStackTrace();
-	    logger.error("start error QNettyClient : {} ", e);
+	if (id == null) {
+	    id = address + "--" + QMConfig.getInstance().LOCALNAME;
 	}
+
+	QNode ret = QNodeFactory.get(id);
+	if (ret != null) {
+	    if (ret.isClosed()) {
+		ret.connect();
+		if (!ret.isClosed()) {
+		    return ret;
+		}
+	    } else {
+		return ret;
+	    }
+	}
+
+	Channel channel = NettyUtil.connect(bootstrap, address, config.getConnectTimeout());
+	ret = QNode.of(QSession.of(id), channel);
+	QNodeFactory.registerNode(ret);
+	logger.error("connect : " + address);
+	return ret;
     }
 
+    @Override
+    public void sendAll(Object message, IQCallback<?> cb) {
+	QNodeFactory.foreach((node) -> {
+	    IQCallback<?> _cb = null;
+	    // 多个只能处理简单的逻辑，无法处理复杂情况
+	    if (cb != null) {
+		_cb = new IQCallback<Void>() {
+
+		    @Override
+		    public void onSucceed(short code) {
+			cb.onSucceed(code);
+		    }
+
+		    @Override
+		    public void onReceiveError(short code) {
+			cb.onReceiveError(code);
+		    }
+
+		    @Override
+		    public void onSendError(short code) {
+			cb.onSendError(code);
+		    }
+		};
+	    }
+	    node.send(message, _cb);
+	});
+    }
+
+    @Override
+    public void send(QNode node, Object message) {
+	node.send(message, null);
+    }
+
+    @Override
+    public <T> IQCallback<T> send(QNode node, Object message, IQCallback<T> cb) {
+	return node.send(message, cb);
+    }
+
+    @Override
     public void sync() {
 	while (!closed) {
 	    try {
@@ -95,41 +143,16 @@ public class QNettyClient {
     }
 
     /** 连接地址 */
-    private InetSocketAddress toInetSocketAddress(String text) {
-	if (StringUtils.isEmpty(text)) {
-	    throw new IllegalArgumentException("无效的地址字符串: " + text);
-	}
-
-	int colonIndex = text.lastIndexOf(":");
-	if (colonIndex > 0) {
-	    String host = text.substring(0, colonIndex);
-	    if (!"*".equals(host)) {
-		int port = parsePort(text.substring(colonIndex + 1));
-		return new InetSocketAddress(host, port);
-	    }
-	}
-
-	int port = parsePort(text.substring(colonIndex + 1));
-	return new InetSocketAddress(port);
-    }
-
-    /** 获取端口值 */
-    private int parsePort(String s) {
-	try {
-	    return Integer.parseInt(s);
-	} catch (NumberFormatException nfe) {
-	    throw new IllegalArgumentException("无效的端口值: " + s);
-	}
-    }
 
     public void close() {
 	if (closed) {
 	    return;
 	}
-	logger.error("close QNettyClient : ");
+	logger.error("close QNettyClient");
 	initializer = false;
 	closed = true;
-
+	QNodeFactory.closeAll();
+	QFactoryUtil.clear();
 	workerGroup.shutdownGracefully();
     }
 
