@@ -3,7 +3,6 @@ package com.eyu.onequeue.proxy.service;
 import java.lang.reflect.Method;
 
 import com.eyu.onequeue.proxy.JavassistHepler;
-import com.eyu.onequeue.proxy.model.ClassMetadata;
 import com.eyu.onequeue.proxy.model.IEnhanceService;
 
 import javassist.CtClass;
@@ -14,9 +13,7 @@ import javassist.CtMethod;
  * 
  * @author solq
  */
-public abstract class AbstractEnhanceService  implements IEnhanceService  {
-
-    protected ClassMetadata classMetadata;
+public abstract class AbstractEnhanceService implements IEnhanceService {
 
     @Override
     public void addCtConstructors(Class<?> clz, CtClass enhancedClz) throws Exception {
@@ -34,17 +31,7 @@ public abstract class AbstractEnhanceService  implements IEnhanceService  {
     public void loadInit(Object obj) {
 
     }
-
-    @Override
-    abstract public boolean matches(Method method);
-
-    @Override
-    abstract public void buildEnhanceMethods(Class<?> clz, CtClass enhancedClz);
-
-    @Override
-    public ClassMetadata getClassMetadata() {
-	return classMetadata;
-    }
+ 
 
     /**
      * 创建增强类对象的方法

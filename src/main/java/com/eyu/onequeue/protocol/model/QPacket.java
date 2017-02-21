@@ -14,6 +14,8 @@ import io.netty.buffer.ByteBuf;
 /***
  * 包 格式 [sn] + [c] + [b] +[sid]
  * 
+ * c [0000 1111] 16个协议
+ * 
  * @author solq
  */
 public class QPacket implements IRecycle, IByte {
@@ -23,11 +25,16 @@ public class QPacket implements IRecycle, IByte {
      */
     public final static int PACK_FIXED_LENG = Long.BYTES + Short.BYTES + Long.BYTES;
     /**
-     * 响应掩码
+     * 响应掩码 [0001 0000]
      */
-    public final static short MASK_RESPONSE = 0x1000;
+    public final static short MASK_RESPONSE = 0x10;
 
-    public final static int MASK_OPCODE = MASK_RESPONSE;
+    /**
+     * 压缩掩码[0010 0000]
+     */
+    public final static short MASK_COMPRESS = 0x20;
+
+    public final static int MASK_OPCODE = MASK_RESPONSE | MASK_COMPRESS;
 
     /** 序号 用于包ID，解决冥等 **/
     private long sn;
@@ -83,7 +90,7 @@ public class QPacket implements IRecycle, IByte {
     public QProduce toProduce() {
 	QProduce ret = toObject();
 	if (ret == null) {
-	    ret = SerialUtil.readZipValue(b, QProduce.class);
+	    ret = QProduce.of(getBytes());
 	    tmpData = ret;
 	}
 	return ret;
@@ -92,7 +99,7 @@ public class QPacket implements IRecycle, IByte {
     public QConsume toConsume() {
 	QConsume ret = toObject();
 	if (ret == null) {
-	    ret = QConsume.byte2Object(SerialUtil.zip(b));
+	    ret = QConsume.byte2Object(getBytes());
 	    tmpData = ret;
 	}
 	return ret;
@@ -101,7 +108,7 @@ public class QPacket implements IRecycle, IByte {
     public Collection<QSubscribe> toSubscribe() {
 	Collection<QSubscribe> ret = toObject();
 	if (ret == null) {
-	    ret = SerialUtil.readValue(b, SerialUtil.subType);
+	    ret = SerialUtil.readValue(getBytes(), SerialUtil.subType);
 	    tmpData = ret;
 	}
 	return ret;
@@ -110,7 +117,7 @@ public class QPacket implements IRecycle, IByte {
     public QRpc toRpc() {
 	QRpc ret = toObject();
 	if (ret == null) {
-	    ret = QRpc.toObject(b);
+	    ret = QRpc.toObject(getBytes());
 	    tmpData = ret;
 	}
 	return ret;
@@ -128,6 +135,16 @@ public class QPacket implements IRecycle, IByte {
     @SuppressWarnings("unchecked")
     <T> T toObject() {
 	return (T) tmpData;
+    }
+
+    byte[] getBytes() {
+	byte[] bytes = null;
+	if (hasStatus(MASK_COMPRESS)) {
+	    bytes = SerialUtil.unZip(b);
+	} else {
+	    bytes = b;
+	}
+	return bytes;
     }
 
     public void responseCode(short code) {
@@ -194,32 +211,31 @@ public class QPacket implements IRecycle, IByte {
 	byte[] b = new byte[2];
 	PacketUtil.writeShort(0, code, b);
 	long sn = PacketUtil.getSn();
-	return of(QOpCode.QCODE, sn, -1, code, b);
+	return of(QOpCode.QCODE, sn, -1, null, b);
     }
 
     public static QPacket of(QRpc obj) {
 	byte[] b = obj.toBytes();
 	long sn = PacketUtil.getSn();
-	return of(QOpCode.QRPC, sn, -1, obj, b);
+	return of(QOpCode.QRPC, sn, -1, null, b);
     }
 
     public static QPacket of(QProduce obj) {
-	byte[] b = SerialUtil.writeValueAsZipBytes(obj);
+	byte[] b = obj.toBytes();
 	long sn = PacketUtil.getSn();
-	return of(QOpCode.QPRODUCE, sn, -1, obj, b);
+	return of(QOpCode.QPRODUCE, sn, -1, null, b);
     }
 
     public static QPacket of(QConsume obj) {
 	byte[] b = obj.toBytes();
-	b = SerialUtil.zip(b);
 	long sn = PacketUtil.getSn();
-	return of(QOpCode.QCONSUME, sn, -1, obj, b);
+	return of(QOpCode.QCONSUME, sn, -1, null, b);
     }
 
     public static QPacket of(Collection<QSubscribe> obj) {
 	byte[] b = SerialUtil.writeValueAsBytes(obj);
 	long sn = PacketUtil.getSn();
-	return of(QOpCode.QSUBSCIBE, sn, -1, obj, b);
+	return of(QOpCode.QSUBSCIBE, sn, -1, null, b);
     }
 
     public static QPacket of(short c, long sn, long sid, Object value, byte[] body) {
@@ -227,6 +243,11 @@ public class QPacket implements IRecycle, IByte {
 	ret.c = c;
 	ret.sn = sn;
 	ret.sid = sid;
+	// 未压缩，处理压缩
+	if (!ret.hasStatus(MASK_COMPRESS) && body.length >= QMConfig.getInstance().COMPRESS_SIZE) {
+	    body = SerialUtil.zip(body);
+	    ret.setStatus(MASK_COMPRESS);
+	}
 	ret.b = body;
 	ret.tmpData = value;
 	return ret;
@@ -237,6 +258,7 @@ public class QPacket implements IRecycle, IByte {
     public short getC() {
 	return (short) (c & ~QPacket.MASK_OPCODE);
     }
+
 
     public long getSid() {
 	return sid;

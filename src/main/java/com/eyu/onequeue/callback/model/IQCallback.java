@@ -49,7 +49,6 @@ public abstract class IQCallback<T> implements IRecycle, QResult<T> {
 	if (LOGGER.isWarnEnabled()) {
 	    LOGGER.warn("onSendError : {)", code);
 	}
-	this.code = code;
     }
 
     // 默认什么也不用做
@@ -57,7 +56,6 @@ public abstract class IQCallback<T> implements IRecycle, QResult<T> {
 	if (LOGGER.isWarnEnabled()) {
 	    LOGGER.warn("onReceiveError : {)", code);
 	}
-	this.code = code;
     }
 
     // get setter
@@ -112,6 +110,31 @@ public abstract class IQCallback<T> implements IRecycle, QResult<T> {
     }
 
     @Override
+    public T getResult() {
+	T ret = null;
+	try {
+	    ret = get();
+	} catch (Exception e) {
+	    throw new QSocketException(QCode.SOCKET_ERROR_REQUEST_TIMEOUT, null, e);
+	}
+	return ret;
+    }
+
+    @Override
+    public boolean isError() {
+	try {
+	    getResult();
+	} catch (Exception e) {
+	    return true;
+	}
+	if (code == null) {
+	    return true;
+	}
+
+	return QCode.SUCCEED == code;
+    }
+
+    @Override
     public void recycle() {
 	if (code == null) {
 	    code = QCode.MESSAGE_ERROR_RECYCLE;
@@ -150,14 +173,4 @@ public abstract class IQCallback<T> implements IRecycle, QResult<T> {
 	this.code = code;
     }
 
-    @Override
-    public T getResult() {
-	T ret = null;
-	try {
-	    ret = get();
-	} catch (Exception e) {
-	    throw new QSocketException(QCode.SOCKET_ERROR_REQUEST_TIMEOUT, null, e);
-	}
-	return ret;
-    }
 }

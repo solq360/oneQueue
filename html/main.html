@@ -1,0 +1,147 @@
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="full-screen" content="yes">
+<link rel="Stylesheet" type="text/css" href="css/main.css">
+
+<script type="text/javascript" charset="utf-8" src="js/jquery-3.1.1.min.js"></script>
+<script type="text/javascript" charset="utf-8" src="js/unslider.min.js"></script>
+<script type="text/javascript" charset="utf-8" src="js/main.js"></script>
+
+<script type="text/template" id="tpl-item">
+	<div class="item" >
+		<img src="img/a.jpg" class="itemImg" onclick="NAV_HISTORY.jumpPage('product','{{refId}}')" /> 
+		<p class="itemTitle" onclick="NAV_HISTORY.jumpPage('product','{{refId}}')">{{title1}}</p> 
+		<p class="itemProgressTitle">开奖进度90% <b class="itemProgress">========##</b></p>
+		<button class="bntAddShop fz10">加入清单</button>
+		<button class="bntBuyShop fz10">马上购买</button>
+	</div>
+	<div class="item itemRight">
+		<img src="img/a.jpg" class="itemImg" onclick="NAV_HISTORY.jumpPage('product','{{refId}}')" /> 
+		<p class="itemTitle" onclick="NAV_HISTORY.jumpPage('product','{{refId}}')">{{title2}}</p> 
+		<p class="itemProgressTitle">开奖进度90% <b class="itemProgress">========##</b></p>
+		<button class="bntAddShop fz10">加入清单</button>
+		<button class="bntBuyShop fz10">马上购买</button>
+	</div>
+</script>
+
+<script type="text/template" id="tpl-preItem">
+<tr class="preItem" onclick="NAV_HISTORY.jumpPage('product','{{refId}}')">
+	<td width="5%">
+		<input type="checkbox" class="preItemCheckBox"  />
+	</td>
+	<td width="30%">
+		<img src="img/a.jpg" class="preItemImg" />
+	</td>
+	<td width="65%" class="preItemInfo fz10">
+		<p class="preItemTitle">物品1</p> 
+		<br/>
+		<p class="preItemProgressTitle">总需要人数200人,剩余20人</p>
+		<p class="preItemProgressTitle">开奖进度90% <b class="itemProgress">========##</b></p>
+		<br/>
+		<p class="editInput"><label>5元 总:10元</label> <button>-</button><input type="text" value=1 /><button>+</button></p>
+	</td>
+</tr>
+</script>
+
+</head>
+<body>
+<div id="head">
+	<div id="search">
+		<div id="searchBody">
+			<img src="img/a.jpg" />
+			<span>智能手表</span>
+		</div>
+	</div>
+	
+	<div id="ad" class="banner">
+		<ul id="adlist">
+				<li><img src="img/a.jpg" /></li>
+				<li><img src="img/a.jpg" /></li>
+				<li><img src="img/a.jpg" /></li>
+				<li><img src="img/a.jpg" /></li>
+		</ul>
+ 	</div>
+ 
+公告
+	<div id="productNav" tabTClass="footTabTclass" tabRClass="footTabRclass" class="textCenter layoutH tabToolbar divFlex">
+		<div tabRef="home" tabCtx="fast">最快</div>
+		<div tabRef="home" tabCtx="hot">最热</div>
+		<div tabRef="home" tabCtx="rate">高比率</div>
+		<div tabRef="home" tabCtx="new">最新</div>
+	</div>
+</div>
+<div id="body">
+	<div id="home">
+		<div id="itemList"></div>
+		<div id="loadDom">加载中</div>
+	</div>
+	<div id="shoppingCart" class="hidden">
+		<table cellpadding="0" cellspacing="0">
+			<thead>
+			<tr>
+				<th>
+					<input type="checkbox"  class="checkBoxGroup" refSub="preItemCheckBox"/>
+				</th>
+				<th colspan="2">滚动公告</th>
+			</tr>
+			</thead>
+			<tbody id="buyItemList"></tbody>
+			<tfoot>
+				<tr>
+					<td>
+						<input type="checkbox"  class="checkBoxGroup" refSub="preItemCheckBox"/>
+					</td>
+					<td colspan="2"  align="right"><button id="settle">结算</button></td>
+				</tr>
+			</tfoot>
+		</table>
+
+	</div>
+	<div id="activity" class="hidden">
+		<div>activity</div>
+		activity
+	</div>
+	<div id="feedback" class="hidden">
+		feedback
+	</div>
+	<div id="user" class="hidden">
+		user
+		user
+	</div>
+	
+	
+	<div id="product" class="hidden">
+		<div id="imgs">
+			<img src="" />
+		</div>
+		<div id="productHead">
+			XXXXXXX
+		</div>
+		
+		
+		<div id="recordsNav"  tabTClass="footTabTclass" tabRClass="footTabRclass" class="textCenter layoutH tabToolbar divFlex">
+			<div tabRef="hidRecords">历史奖励</div>
+			<div tabRef="buyRecords">购买记录</div>
+		</div>
+		
+		<div id="records">
+			<div id="hidRecords">
+				hidRecords
+			</div>
+			<div id="buyRecords" class="hidden">
+				buyRecords
+			</div>
+		</div>
+	</div>
+</div>
+
+<div id="foot" tabTClass="footTabTclass" tabRClass="footTabRclass" class="textCenter layoutH tabToolbar divFlex">
+	<div tabRef="home" tabCtx="fast">首页</div>
+	<div tabRef="shoppingCart">清单</div>
+	<div tabRef="activity">活动</div>
+	<div tabRef="feedback">反馈</div>
+	<div tabRef="user">个人</div>
+</div>
+
+</body>

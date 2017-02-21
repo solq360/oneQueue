@@ -14,6 +14,8 @@ public class QException extends RuntimeException {
 	return code;
     }
 
+   
+
     public QException(short code, String message, Throwable cause) {
 	super(message, cause);
 	this.code = code;

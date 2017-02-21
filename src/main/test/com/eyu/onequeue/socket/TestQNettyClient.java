@@ -1,16 +1,11 @@
 package com.eyu.onequeue.socket;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import com.eyu.onequeue.QMConfig;
 import com.eyu.onequeue.callback.model.IQCallback;
-import com.eyu.onequeue.exception.QCode;
-import com.eyu.onequeue.message.TestMessageObject;
-import com.eyu.onequeue.protocol.model.QMessage;
+import com.eyu.onequeue.message.TestMessage;
 import com.eyu.onequeue.protocol.model.QPacket;
 import com.eyu.onequeue.protocol.model.QProduce;
 import com.eyu.onequeue.protocol.model.QSubscribe;
@@ -45,19 +40,21 @@ public class TestQNettyClient {
 	    public void onSucceed(short code) {
 		System.out.println("topic xxxxx");
 	    }
+
 	    @Override
 	    public void onReceiveError(short code) {
- 
+
 	    }
+
 	    @Override
 	    public void onSendError(short code) {
- 
+
 	    }
 	});
-	//测试
+	// 测试
 	QNode node = client.connect(testAddress, null);
 	// node.send(QPacket.of(QCode.SUCCEED), null);
-	node.send(QPacket.of(ofProduce()), new IQCallback<Void>() {
+	node.send(QPacket.of(TestMessage.ofProduce("testxx",2000, 200)), new IQCallback<Void>() {
 
 	    @Override
 	    public void onSucceed(short code) {
@@ -86,14 +83,4 @@ public class TestQNettyClient {
 	client.sync();
     }
 
-    static QProduce ofProduce() {
-	int count = 2000;
-	TestMessageObject obj = TestMessageObject.ofBig(200);
-	List<QMessage<Long, TestMessageObject>> tmp = new ArrayList<>();
-	for (int i = 0; i < count; i++) {
-	    tmp.add(QMessage.of(1L, obj));
-	}
-	QProduce qm = QProduce.of("test", tmp.toArray(new QMessage[count]));
-	return qm;
-    }
 }

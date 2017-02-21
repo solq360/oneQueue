@@ -15,6 +15,7 @@ import com.eyu.onequeue.protocol.model.IRecycle;
 import com.eyu.onequeue.protocol.model.QPacket;
 import com.eyu.onequeue.util.NettyUtil;
 import com.eyu.onequeue.util.NettyUtil.CLOSE_SOURCE;
+import com.eyu.onequeue.util.QCodeUtil;
 import com.eyu.onequeue.util.QFactoryUtil;
 
 import io.netty.channel.Channel;
@@ -56,10 +57,9 @@ public class QNode implements IRecycle {
     public void replace(QNode old) {
 	session.replace(old.session);
 	callbackManager = old.callbackManager;
-
-	NettyUtil.closeChannel(CLOSE_SOURCE.REPLACE, false, old.channel);
-
+	
 	bindNode(old.channel, channel);
+	NettyUtil.closeChannel(CLOSE_SOURCE.REPLACE, false, old.channel);
 
 	// recycle
 	old.callbackManager = null;
@@ -77,7 +77,7 @@ public class QNode implements IRecycle {
 		throw e;
 	    }
 	    if (LOGGER.isWarnEnabled()) {
-		LOGGER.warn("sendSendError : {}  {}", e.getCode(), e);
+		LOGGER.warn("sendError : {}  {}", QCodeUtil.getDes(e.getCode()), e);
 	    }
 	    callbackManager.doSendError(packet, e.getCode());
 	} catch (Exception e) {
@@ -85,7 +85,7 @@ public class QNode implements IRecycle {
 		throw e;
 	    }
 	    if (LOGGER.isWarnEnabled()) {
-		LOGGER.warn("sendSendError : {}  ", e);
+		LOGGER.warn("sendError : {}  ", e);
 	    }
 	    callbackManager.doSendError(packet, QCode.ERROR_UNKNOWN);
 	}

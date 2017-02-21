@@ -1,7 +1,6 @@
 package com.eyu.onequeue.store.service;
 
 import com.eyu.onequeue.protocol.model.QConsume;
-import com.eyu.onequeue.protocol.model.QProduce;
 import com.eyu.onequeue.store.model.IQStore;
 import com.eyu.onequeue.store.model.QQuery;
 
@@ -25,13 +24,8 @@ public class FileQMStore implements IQStore {
     }
 
     @Override
-    public void save(Object... messages) {
-	fileIndexer.write(messages);
-    }
-
-    @Override
-    public void save(byte[] bytes) {
-	fileIndexer.write(bytes);
+    public void save(Object... values) {
+	fileIndexer.write(values);
     }
 
     @Override
@@ -39,11 +33,9 @@ public class FileQMStore implements IQStore {
 	return fileIndexer.query(query);
     }
     @Override
-    public QProduce queryForProduce(QQuery query) {
-	return fileIndexer.queryForProduce(query);
+    public QConsume queryForRaw(QQuery query) {
+	return fileIndexer.queryForRaw(query);
     }
-
-
     @Override
     public void persist() {
 	fileIndexer.persist();
@@ -56,8 +48,9 @@ public class FileQMStore implements IQStore {
 
     @Override
     public void start() {
-	
+
     }
 
- 
+
+
 }

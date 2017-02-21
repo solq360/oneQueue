@@ -3,10 +3,12 @@ package com.eyu.onequeue.proxy.model;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
+import com.eyu.onequeue.protocol.model.IRecycle;
+
 /***
  * @author solq
  */
-public abstract class ClassMetadata {
+public abstract class ClassMetadata implements IRecycle {
     /** 类 */
     protected Class<?> clz;
     /** 增强后的类 */
@@ -22,6 +24,15 @@ public abstract class ClassMetadata {
     }
 
     public abstract void record(Method method);
+    
+    @Override
+    public void recycle() {
+	clz = null;
+	enhancedClz = null;
+	constructor = null;
+	enhanceService = null;
+    }
+    
     // getter
 
     public Class<?> getEnhancedClz() {

@@ -42,4 +42,9 @@ public abstract class QCodeUtil {
 	String des = mapDes.get(code);
 	System.out.println("des : " + des);
     }
+
+    public static String getDes(int code) {
+	String des = mapDes.get(code);
+	return des;
+    }
 }

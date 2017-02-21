@@ -5,9 +5,9 @@ package com.eyu.onequeue.store.model;
  **/
 public class QQuery {
     private String topic;
-
     private long startOffset;
 
+    
     public long getStartOffset() {
 	return startOffset;
     }

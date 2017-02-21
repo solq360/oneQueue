@@ -43,6 +43,7 @@ public class QCallbackManager implements IRecycle {
 		    return;
 		}
 		try {
+		    _cb.setCode(QCode.MESSAGE_ERROR_TIMEOUT);
 		    _cb.onReceiveError(QCode.MESSAGE_ERROR_TIMEOUT);
 		} finally {
 		    _cb.recycle();
@@ -73,6 +74,7 @@ public class QCallbackManager implements IRecycle {
 	    return;
 	}
 	try {
+	    cb.setCode(code);
 	    cb.onSendError(code);
 	} finally {
 	    cb.recycle();

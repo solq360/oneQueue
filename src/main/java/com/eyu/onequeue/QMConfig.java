@@ -13,8 +13,10 @@ import org.apache.commons.lang3.reflect.TypeUtils;
 import com.eyu.onequeue.protocol.model.QSubscribe;
 import com.eyu.onequeue.reflect.PropertiesFactory;
 import com.eyu.onequeue.reflect.anno.FieldValue;
+import com.eyu.onequeue.rpc.anno.QModel;
 import com.eyu.onequeue.socket.model.NettyClientConfig;
 import com.eyu.onequeue.socket.model.NettyServerConfig;
+import com.eyu.onequeue.util.ReflectUtil;
 
 import io.netty.channel.ChannelOption;
 import io.netty.channel.socket.ServerSocketChannel;
@@ -71,6 +73,20 @@ public class QMConfig {
 	    ret.add(QSubscribe.of(s[0], s[1]));
 	}
 	return ret;
+    }
+
+    /** rpc param compress **/
+    @FieldValue("QM.COMPRESS_SIZE")
+    public int COMPRESS_SIZE = 1024;
+    /** 服务地址<service,address> **/
+    @FieldValue("QM.REMOTE_SERVICE")
+    public Map<String, String> REMOTE_SERVICE = new HashMap<>();
+
+    public boolean isRemoteService(Class<?> target) {
+	if (!target.isInterface()) {
+	    target = ReflectUtil.getInterfaceForAnno(target, QModel.class);
+	}
+	return REMOTE_SERVICE.containsKey(target.getName());
     }
 
     // NETTY
@@ -204,15 +220,21 @@ public class QMConfig {
     public int POOL_CLEAR_MESSAGE_CORE = Math.min(8, Runtime.getRuntime().availableProcessors());
 
     // STORE
+    /** 总内存上限，防止突然搞挂服务器 **/
+    @FieldValue("QM.STORE_MEMORY_MAX_SIZE")
+    public long STORE_MEMORY_MAX_SIZE = 1024 * 1024 * 256;
+    /** 超过仓库内存限制清理时间隔 **/
+    @FieldValue("QM.STORE_MEMORY_GUARD_CLOSE_INTERVAL")
+    public long STORE_MEMORY_GUARD_CLOSE_INTERVAL = 1000 * 60;
 
     /** 消息 文件大小 经测试千W级别数据量才占几M空间，所以不用设置太大 **/
     @FieldValue("QM.STORE_SPLIT_SIZE")
-    public long STORE_SPLIT_SIZE = 1024 * 1024 * 32;
+    public long STORE_SPLIT_SIZE = 1024 * 1024 * 5;
     /** server 文件保存根文件，支持迁移 **/
     @FieldValue("QM.STORE_SERVER_ROOT_PATH")
-    public String STORE_SERVER_ROOT_PATH = "e:/qmdata/server";
+    public String STORE_SERVER_ROOT_PATH = "e:/qmdata/server/";
     /** client 文件保存根文件，支持迁移 **/
-    public String STORE_CLIENT_ROOT_PATH = "e:/qmdata/client";
+    public String STORE_CLIENT_ROOT_PATH = "e:/qmdata/client/";
 
     /** 持久化文件时间 间隔 **/
     @FieldValue("QM.STORE_FILE_PERSIST_INTERVAL")
@@ -224,9 +246,6 @@ public class QMConfig {
     @FieldValue("QM.STORE_FILE_DELETE_INTERVAL")
     public long STORE_FILE_DELETE_INTERVAL = 1000 * 60 * 60 * 24 * 15;
 
-    /** 消息缓冲队列开关 **/
-    @FieldValue("QM.STORE_QUEUE_OPEN")
-    public boolean STORE_QUEUE_OPEN = true;
     /** 消息缓冲队列初始化长度 根据业务每秒支持量设置，不能设置太高，原因解码时占大量CPU时间跟释放大量临时内存 **/
     @FieldValue("QM.STORE_QUEUE_BUFFER_SIZE")
     public int STORE_QUEUE_BUFFER_SIZE = 5000;
@@ -235,7 +254,7 @@ public class QMConfig {
     public double STORE_QUEUE_PERSIST_SIZE = 0.9;
     /** 查询返回数据最大值 **/
     @FieldValue("QM.STORE_QUEUE_MAX_SIZE")
-    public long STORE_QUEUE_MAX_SIZE = 1024 * 1024 * 1;
+    public long STORE_QUEUE_MAX_SIZE = 1024 * 512;
 
     /** 消息仓库根目录 **/
     public String getStoreRootPath(String topic) {
@@ -253,10 +272,10 @@ public class QMConfig {
     public int PUSH_MESSAGE_INTERVAL = 500;
     /** server 推送保存记录文件 **/
     @FieldValue("QM.PUSH_PERSIST_FILE")
-    public String PUSH_PERSIST_SERVER_FILE = "e:/qmdata/pushRecord/server";
+    public String PUSH_PERSIST_SERVER_FILE = "e:/qmdata/pushRecord/server/";
     /** client 推送保存记录文件 **/
     @FieldValue("QM.PUSH_PERSIST_FILE")
-    public String PUSH_PERSIST_CLIENT_FILE = "e:/qmdata/pushRecord/client";
+    public String PUSH_PERSIST_CLIENT_FILE = "e:/qmdata/pushRecord/client/";
     /** 多少分钟持久分推送记录 **/
     @FieldValue("QM.PUSH_PERSIST_INTERVAL")
     public long PUSH_PERSIST_INTERVAL = 1000 * 60 * 5;

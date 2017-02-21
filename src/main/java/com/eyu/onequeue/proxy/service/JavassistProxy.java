@@ -1,12 +1,9 @@
 package com.eyu.onequeue.proxy.service;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -14,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.helpers.FormattingTuple;
 import org.slf4j.helpers.MessageFormatter;
 
+import com.eyu.onequeue.exception.QCode;
+import com.eyu.onequeue.exception.QEnhanceException;
 import com.eyu.onequeue.proxy.JavassistHepler;
 import com.eyu.onequeue.proxy.model.ClassMetadata;
 import com.eyu.onequeue.proxy.model.IEnhanceService;
@@ -49,27 +48,23 @@ public class JavassistProxy implements IProxy {
 
     private static final IProxy DEFAULT_OBJECT = new JavassistProxy();
 
-    private static Set<Method> OBJECT_METHODS = new HashSet<>();
-
-    static {
-	for (Method m : Object.class.getDeclaredMethods()) {
-	    OBJECT_METHODS.add(m);
-	}
-    }
-
     public static IProxy getDefault() {
 	return DEFAULT_OBJECT;
     }
 
-    public synchronized void register(Class<?> clz, IEnhanceService service, boolean isTry) {
+    public void register(Class<?> clz, IEnhanceService service) {
 	IEnhanceService old = enhanceServices.get(clz);
 	if (old != null) {
-	    if (isTry || !service.equals(old)) {
-		throw new RuntimeException("已注册类增强服务 :" + clz.getName());
-	    }
 	    return;
 	}
-	enhanceServices.put(clz, service);
+	synchronized (clz) {
+	    old = enhanceServices.get(clz);
+	    if (old != null) {
+		return;
+	    }
+	    enhanceServices.put(clz, service);
+	}
+
     }
 
     @Override
@@ -89,7 +84,7 @@ public class JavassistProxy implements IProxy {
 	} catch (Exception e) {
 	    FormattingTuple message = MessageFormatter.arrayFormat("实体类[{}]增强失败:{}", new Object[] { clz.getSimpleName(), e.getMessage(), e });
 	    logger.error(message.getMessage());
-	    throw new RuntimeException(e);
+	    throw new QEnhanceException(QCode.ENHANCE_ERROR, message.getMessage(), e);
 	}
     }
 
@@ -108,7 +103,7 @@ public class JavassistProxy implements IProxy {
 	} catch (Exception e) {
 	    FormattingTuple message = MessageFormatter.arrayFormat("实体类[{}]增强失败:{}", new Object[] { clz.getSimpleName(), e.getMessage(), e });
 	    logger.error(message.getMessage());
-	    throw new RuntimeException(e);
+	    throw new QEnhanceException(QCode.ENHANCE_ERROR, message.getMessage(), e);
 	}
     }
 
@@ -142,16 +137,15 @@ public class JavassistProxy implements IProxy {
      */
     private Constructor<?> createEnhancedClass(final Class<?> clz) throws Exception {
 	final IEnhanceService enhanceService = enhanceServices.get(clz);
-	enhanceService.initMetadata();
-
-	final ClassMetadata classMetadata = enhanceService.getClassMetadata();
+	enhanceService.initMetadata(clz);
+	final ClassMetadata classMetadata = enhanceService.getClassMetadata(clz);
 	classMetadata.init(clz, null, null, enhanceService);
 
 	ReflectUtil.foreachMethods(clz, (method) -> {
 	    if (Modifier.isFinal(method.getModifiers()) || Modifier.isStatic(method.getModifiers())) {
 		return;
 	    }
-	    if (OBJECT_METHODS.contains(method)) {
+	    if (JavassistHepler.OBJECT_METHODS.contains(method)) {
 		return;
 	    }
 	    classMetadata.record(method);
@@ -173,8 +167,8 @@ public class JavassistProxy implements IProxy {
 	} else {
 	    enhancedClz.addConstructor(CtNewConstructor.defaultConstructor(enhancedClz));
 	}
-	
- 	Class<?> current = enhancedClz.toClass();
+
+	Class<?> current = enhancedClz.toClass();
 	Constructor<?> constructor = null;
 	if (clz.isInterface()) {
 	    constructor = current.getConstructor();
@@ -229,10 +223,9 @@ public class JavassistProxy implements IProxy {
      * </pre>
      */
     private CtClass buildCtClass(Class<?> entityClz) throws Exception {
-	CtClass superClz = JavassistHepler.getCtClass(entityClz);
 	CtClass result = JavassistHepler.classPool.makeClass(entityClz.getCanonicalName() + CLASS_SUFFIX);
 	if (!entityClz.isInterface()) {
-	    result.setSuperclass(superClz);
+	    result.setSuperclass(JavassistHepler.getCtClass(entityClz));
 	} else {
 	    result.setInterfaces(JavassistHepler.toCtClassArray(entityClz));
 	}

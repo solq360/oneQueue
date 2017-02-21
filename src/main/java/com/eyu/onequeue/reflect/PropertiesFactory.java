@@ -49,7 +49,9 @@ public class PropertiesFactory {
 		}
 		Object value = tmp;
 		Type type = f.getGenericType();
-		if (type.equals(Integer.TYPE)) {
+		if (TypeUtils.isAssignable(type, String.class)) {
+		    value = tmp;
+		} else if (type.equals(Integer.TYPE)) {
 		    value = se.eval(tmp);
 		} else if (type.equals(Double.TYPE)) {
 		    value = se.eval(tmp);
@@ -65,14 +67,16 @@ public class PropertiesFactory {
 		    value = se.eval(tmp);
 		} else if (TypeUtils.isAssignable(type, Map.class)) {
 		    value = SerialUtil.readValue(tmp, type);
-		}else if (TypeUtils.isAssignable(type, Collection.class)) {
+		} else if (TypeUtils.isAssignable(type, Collection.class)) {
 		    value = SerialUtil.readValue(tmp, type);
-		}else if (TypeUtils.isAssignable(type, Class.class)) {
+		} else if (TypeUtils.isAssignable(type, Class.class)) {
 		    value = Class.forName(tmp);
-		}else if (TypeUtils.isArrayType(type)) {
+		} else if (TypeUtils.isArrayType(type)) {
 		    value = SerialUtil.readArray(tmp, type);
+		} else {
+		    value = SerialUtil.readValue(tmp, type);
 		}
-		 
+
 		String callMethodName = "set" + f.getName();
 		boolean flag = false;
 		try {

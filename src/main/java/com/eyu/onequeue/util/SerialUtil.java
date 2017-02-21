@@ -45,6 +45,10 @@ public abstract class SerialUtil {
     public final static TypeReference<Collection<QSubscribe>> subType = new TypeReference<Collection<QSubscribe>>() {
     };
 
+    public static <T> T formatMessage(Object b, TypeReference<T> tr) {
+	return SerialUtil.map2Object((Map) b, tr);
+    }
+
     public static byte[] zip(byte[] src) {
 	Future<byte[]> future = executorService.submit(new Callable<byte[]>() {
 
@@ -169,20 +173,20 @@ public abstract class SerialUtil {
 	    });
 	    return future.get();
 	} catch (Exception e) {
-	    FormattingTuple message = MessageFormatter.format("readList : {} ## {}", new String(src), clz.getClass());
+	    FormattingTuple message = MessageFormatter.format("readList :  ## {}", clz.getClass());
 	    throw new QJsonException(QCode.JSON_ERROR_DECODE, message.getMessage(), e);
 	}
     }
 
     public static <T> T[] readArray(byte[] src, Class<T> clz) {
-	if (src == null) {
+	if (src == null || src.length == 0) {
 	    return null;
 	}
 	try {
 	    JavaType type = TypeFactory.defaultInstance().constructArrayType(clz);
 	    return (T[]) MAPPER_CONVERT.readValue(src, type);
 	} catch (Exception e) {
-	    FormattingTuple message = MessageFormatter.format("readList : {} ## {}", new String(src), clz.getClass());
+	    FormattingTuple message = MessageFormatter.format("readList :  ## {}", clz.getClass());
 	    throw new QJsonException(QCode.JSON_ERROR_DECODE, message.getMessage(), e);
 	}
     }
@@ -222,7 +226,19 @@ public abstract class SerialUtil {
 	try {
 	    return MAPPER_CONVERT.readValue(src, type);
 	} catch (Exception e) {
-	    FormattingTuple message = MessageFormatter.format("readValue : {} ## {}", src, type);
+	    FormattingTuple message = MessageFormatter.format("readValue :  ## {}", type);
+	    throw new QJsonException(QCode.JSON_ERROR_DECODE, message.getMessage(), e);
+	}
+    }
+
+    public static Object readValue(byte[] src, Type type) {
+	if (src == null) {
+	    return null;
+	}
+	try {
+	    return MAPPER_CONVERT.readValue(src, TypeFactory.defaultInstance().constructType(type));
+	} catch (Exception e) {
+	    FormattingTuple message = MessageFormatter.format("readValue :  ## {}", type);
 	    throw new QJsonException(QCode.JSON_ERROR_DECODE, message.getMessage(), e);
 	}
     }

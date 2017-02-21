@@ -7,4 +7,5 @@ import javax.management.MXBean;
 @MXBean
 public interface IStoreMBean {
     public int getUseStoreCount();
+    public long getUseMemoryCount();
 }

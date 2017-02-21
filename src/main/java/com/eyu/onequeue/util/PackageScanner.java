@@ -2,84 +2,92 @@ package com.eyu.onequeue.util;
 
 import java.io.File;
 import java.io.FileFilter;
-import java.io.IOException;
-import java.net.JarURLConnection;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
+import java.util.Set;
 import java.util.Stack;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.function.Consumer;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * @author solq
+ */
 public class PackageScanner {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PackageScanner.class);
 
-    private static final Logger LOG = LoggerFactory.getLogger(PackageScanner.class);
-
-    private final Collection<Class<?>> clazzCollection = new HashSet<Class<?>>();
-
-    public PackageScanner(final String... packageNames) {
-	for (String packageName : packageNames) {
+    /**
+     * @param packageNames
+     *            过滤的包名，如果为NULL即扫描所有类
+     */
+    public static void scan(Consumer<Class<?>> atcion, final String... packageNames) {
+	Set<String> classPath = new HashSet<>();
+	Set<String> filterPackage = new HashSet<>();
+	if (packageNames == null || packageNames.length == 0) {
+	    String classpathProp = System.getProperty("java.class.path");
+	    if (classpathProp != null) {
+		String[] classpathEntries = classpathProp.split(File.pathSeparator);
+		for (String cpe : classpathEntries) {
+		    cpe = trimr(cpe, '/');
+		    classPath.add(new File(cpe).getAbsolutePath());
+		}
+	    }
+	    ClassLoader cl = ClassLoader.getSystemClassLoader();
+	    URL[] urls = ((URLClassLoader) cl).getURLs();
+	    for (URL url : urls) {
+		String path = trimr(url.getPath(), '/');
+		classPath.add(new File(path).getAbsolutePath());
+	    }
+	} else {
+	    Collections.addAll(classPath, packageNames);
+	    Collections.addAll(filterPackage, packageNames);
+	}
+	
+	/***
+	 * 扫描有三种策略
+	 * 1.jar文件
+	 * 2.class文件
+	 * 3.classPath目录
+	 * */
+	
+	for (String path : classPath) {
 	    try {
-		final String packageDirectory = packageName.replace('.', '/');
-		final Enumeration<URL> urls = Thread.currentThread().getContextClassLoader().getResources(packageDirectory);
-		while (urls.hasMoreElements()) {
-		    final URL url = urls.nextElement();
-		    if ("file".equals(url.getProtocol())) {
-			final File directory = new File(url.getPath());
-			if (!directory.isDirectory()) {
-			    throw new RuntimeException("package:[" + packageName + "] is not directory");
+		if (path.endsWith(".jar")) {
+		    parseJar(path, filterPackage, atcion);
+		}else if (new File(path).isDirectory()) {
+		    parseFile(path, null, filterPackage, atcion);
+		} else {
+		    final String packageDirectory = path.replace('.', '/');
+		    final Enumeration<URL> urls = Thread.currentThread().getContextClassLoader().getResources(packageDirectory);
+		    while (urls.hasMoreElements()) {
+			final URL url = urls.nextElement();
+			if ("file".equals(url.getProtocol())) {
+			    parseFile(url.getPath(), url.getPath().replace(packageDirectory, ""), filterPackage,atcion);
+			} else if ("jar".equals(url.getProtocol())) {
+			    parseJar(url.getPath(),filterPackage, atcion);
 			}
-			clazzCollection.addAll(PackageScanner.scanClassFromDirectory(packageName, directory));
-		    } else if ("jar".equals(url.getProtocol())) {
-			final JarFile jar = ((JarURLConnection) url.openConnection()).getJarFile();
-			clazzCollection.addAll(PackageScanner.scanClassFromJar(packageName, jar));
 		    }
 		}
-	    } catch (IOException exception) {
+	    } catch (Exception exception) {
 		throw new RuntimeException(exception);
 	    }
 	}
     }
 
-    public PackageScanner(final Collection<String> packageNames) {
-	this(packageNames.toArray(new String[packageNames.size()]));
-    }
-
-    public Collection<Class<?>> getClazzCollection() {
-	return this.clazzCollection;
-    }
-
-    public static Collection<Class<?>> scanClassFromJar(final String packageName, final JarFile jar) {
-	final Enumeration<JarEntry> jarEntries = jar.entries();
-	final Pattern pattern = Pattern.compile("(" + packageName.replace('.', '/') + ".*)\\.class");
-	final Collection<Class<?>> clazzCollection = new HashSet<Class<?>>();
-
-	while (jarEntries.hasMoreElements()) {
-	    final JarEntry entry = jarEntries.nextElement();
-	    final String name = entry.getName();
-	    final Matcher matcher = pattern.matcher(name.replace(File.separatorChar, '/'));
-	    if (matcher.find()) {
-		final String className = matcher.group(1).replace('/', '.');
-		try {
-		    final Class<?> clazz = Class.forName(className);
-		    clazzCollection.add(clazz);
-		} catch (ClassNotFoundException e) {
-		    LOG.error("无法加载类[{}]", className, e);
-		}
-	    }
+    private static void parseFile(String path, String root, Set<String> filterPackage,Consumer<Class<?>> atcion) throws Exception {
+	File directory = new File(path);
+	File rootDir = root == null ? directory : new File(root);
+	if (!directory.isDirectory() || !rootDir.isDirectory()) {
+	    throw new RuntimeException("package:[" + directory.getPath() + "] is not directory");
 	}
-	return clazzCollection;
-    }
-
-    public static Collection<Class<?>> scanClassFromDirectory(final String packageName, final File directory) {
 	final Stack<File> scanDirectories = new Stack<File>();
 	final Collection<File> classFiles = new ArrayList<File>();
 	final FileFilter fileFilter = new FileFilter() {
@@ -92,51 +100,78 @@ public class PackageScanner {
 		return file.getName().matches(".*\\.class$");
 	    }
 	};
-
 	scanDirectories.push(directory);
-
 	while (!scanDirectories.isEmpty()) {
 	    final File scanDirectory = scanDirectories.pop();
 	    Collections.addAll(classFiles, scanDirectory.listFiles(fileFilter));
 	}
-	final Pattern pattern = Pattern.compile("(" + packageName.replace('.', '/') + ".*)\\.class");
-	final Collection<Class<?>> clazzCollection = new HashSet<Class<?>>();
 	for (File file : classFiles) {
-	    final Matcher matcher = pattern.matcher(file.getAbsolutePath().replace(File.separatorChar, '/'));
-	    if (matcher.find()) {
-		final String className = matcher.group(1).replace('/', '.');
-		try {
-		    final Class<?> clazz = Class.forName(className);
-		    clazzCollection.add(clazz);
-		} catch (ClassNotFoundException e) {
-		    LOG.error("无法加载类[{}]", className, e);
+	    String rootPath = trimr(rootDir.getAbsolutePath(), File.separatorChar);
+	    int from = rootPath.length() + 1;
+	    String relName = file.getAbsolutePath().substring(from);
+	    String clsName = sub(relName, 0, -6).replace('/', '.').replace('\\', '.');
+	    boolean flag = true;
+	    for (String f : filterPackage) {
+		if (clsName.contains(f)) {
+		    flag = true;
+		    break;
 		}
+		flag = false;
+	    }
+	    if (!flag) {
+		continue;
+	    }
+	    try {
+		atcion.accept(Class.forName(clsName));
+	    } catch (Exception e) {
+		System.err.println("to class error :[" + clsName + "] path :" + path);
 	    }
 	}
-
-	return clazzCollection;
     }
-    // Set<String> CLASSPATH = new HashSet<>();
-    // String classpathProp = System.getProperty("java.class.path");
-    // if (classpathProp != null) {
-    // String[] classpathEntries = classpathProp.split(File.pathSeparator);
-    // for (String cpe : classpathEntries) {
-    // cpe = trimr(cpe, '/');
-    // CLASSPATH.add(new File(cpe).getAbsolutePath());
-    // }
-    // }
-    // SerialUtil.println(CLASSPATH);
-    //
-    // ClassLoader cl = ClassLoader.getSystemClassLoader();
-    // URL[] urls = ((URLClassLoader) cl).getURLs();
-    //
-    // for (URL url : urls) {
-    // String p = trimr(url.getPath(), '/');
-    // p = new File(p).getAbsolutePath();
-    // CLASSPATH.add(p);
-    //
-    // System.out.println(p);
-    // }
-    //
-    // SerialUtil.println(CLASSPATH);
+
+    private static void parseJar(String path, Set<String> filterPackage, Consumer<Class<?>> atcion) throws Exception {
+	ZipFile zip = new ZipFile(new File(path));
+	try {
+	    final Enumeration<? extends ZipEntry> jarEntries = zip.entries();
+	    while (jarEntries.hasMoreElements()) {
+		final ZipEntry entry = jarEntries.nextElement();
+		String name = entry.getName();
+		if (name.endsWith(".class")) {
+		    name = sub(name, 0, -6).replace('/', '.').replace('\\', '.');
+		    boolean flag = true;
+		    for (String f : filterPackage) {
+			if (name.contains(f)) {
+			    flag = true;
+			    break;
+			}
+			flag = false;
+		    }
+		    if (!flag) {
+			continue;
+		    }
+		    try {
+			atcion.accept(Class.forName(name));
+		    } catch (Throwable e) {
+			//有的JAR里的类读会出错,原因是没有依赖完整的包
+			if(LOGGER.isWarnEnabled()){
+			    LOGGER.warn("to class error :[" + name + "] path :" + path);
+			}
+		    }
+		}
+	    }
+	} finally {
+	    zip.close();
+	}
+    }
+
+    public static String trimr(String s, char suffix) {
+	return (!s.isEmpty() && s.charAt(s.length() - 1) == suffix) ? sub(s, 0, -1) : s;
+    }
+
+    public static String sub(String s, int beginIndex, int endIndex) {
+	if (endIndex < 0) {
+	    endIndex = s.length() + endIndex;
+	}
+	return s.substring(beginIndex, endIndex);
+    }
 }

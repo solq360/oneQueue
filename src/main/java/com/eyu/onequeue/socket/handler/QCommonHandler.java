@@ -9,8 +9,10 @@ import com.eyu.onequeue.exception.QCode;
 import com.eyu.onequeue.exception.QSocketException;
 import com.eyu.onequeue.protocol.model.QPacket;
 import com.eyu.onequeue.protocol.model.QProduce;
+import com.eyu.onequeue.protocol.model.QRpc;
 import com.eyu.onequeue.protocol.model.QSubscribe;
 import com.eyu.onequeue.push.QPushManager;
+import com.eyu.onequeue.rpc.service.QRpcEnhanceService;
 import com.eyu.onequeue.socket.model.IQReceiveHandler;
 import com.eyu.onequeue.socket.model.QNode;
 import com.eyu.onequeue.socket.model.QSession;
@@ -139,6 +141,13 @@ public class QCommonHandler extends QDispenseHandler {
 		    return;
 		}
 		QNodeFactory.removeNode(node.toId());
+	    }
+	};
+	this.rpcHandler = new IQReceiveHandler<QRpc>() {
+	    
+	    @Override
+	    public void onReceive(ChannelHandlerContext ctx, QPacket packet, QRpc body) {
+		Object value = QRpcEnhanceService.getFactory().invoke(body);
 	    }
 	};
     }

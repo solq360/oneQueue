@@ -35,6 +35,9 @@ public class CodeTotal {
 	List<File> files = new ArrayList<File>();
 	File file = new File(path);
 	File[] files2 = file.listFiles();
+	if(files2==null){
+	    return files;
+	}
 	for (File file3 : files2) {
 	    if (file3.isFile()) {
 		if (include == null) {

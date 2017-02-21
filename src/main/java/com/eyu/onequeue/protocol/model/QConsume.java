@@ -1,137 +1,115 @@
 package com.eyu.onequeue.protocol.model;
 
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import com.eyu.onequeue.protocol.anno.QOpCode;
 import com.eyu.onequeue.util.PacketUtil;
 import com.eyu.onequeue.util.SerialUtil;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 /**
+ * 临时对象，负责 业务与qpacket数据交互
+ * 
  * @author solq
  */
 @QOpCode(QOpCode.QCONSUME)
-public class QConsume implements IRecycle, IByte {
+@JsonInclude(Include.NON_EMPTY)
+public class QConsume implements IRecycle {
     /**
      * 最后读取指针记录
      */
-    private long offset;
+    private long o;
     /**
-     * 返回raw数据
+     * 数据
      */
-    private byte[] rawData;
-    /**
-     * topic
-     */
-    private byte[] topicBytes;
-
+    private Object[] b;
     /**
      * topic
      */
-    private String topic;
+    private String t;
+    /**
+     * raw数据
+     */
+    private byte[] r;
 
-    @Override
     public byte[] toBytes() {
-	final int len = toSize();
-	byte[] ret = new byte[len];
-	int offset = 0;
-	PacketUtil.writeInt(offset, topicBytes.length, ret);
-	PacketUtil.writeBytes(offset += Integer.BYTES, topicBytes, ret);
-	PacketUtil.writeInt(offset += topicBytes.length, rawData.length, ret);
-	PacketUtil.writeBytes(offset += Integer.BYTES, rawData, ret);
-	PacketUtil.writeLong(offset += rawData.length, offset, ret);
-	return ret;
-    }
-
-    @Override
-    public int toSize() {
-	return Integer.BYTES + topicBytes.length + Integer.BYTES + rawData.length + Long.BYTES;
+	return SerialUtil.writeValueAsBytes(this);
     }
 
     public static QConsume byte2Object(byte[] bytes) {
-	final int tLen = PacketUtil.readInt(0, bytes);
-	final String topic = PacketUtil.readString(Integer.BYTES, tLen, bytes);
-	final int dataLen = PacketUtil.readInt(Integer.BYTES + tLen, bytes);
-	byte[] rawData = PacketUtil.readBytes(Integer.BYTES + tLen + Integer.BYTES, dataLen, bytes);
-	final long offset = PacketUtil.readLong(Integer.BYTES + tLen + Integer.BYTES + rawData.length, bytes);
-	return of(topic, offset, rawData);
+	return SerialUtil.readValue(bytes, QConsume.class);
     }
 
-    public void foreachMessageData(Consumer<QMessage<?, ?>[]> action) {
-	rawToMessageData(action);
-    }
-
-    /***
-     * 建议使用 foreachMessageData
-     * */
-    @Deprecated
-    public List<QMessage<?, ?>> toMessageData() {
-	return rawToMessageData(null);
-    }
-
-    List<QMessage<?, ?>> rawToMessageData(Consumer<QMessage<?, ?>[]> action) {
-	List<QMessage<?, ?>> ret = null;
-	if (action == null) {
-	    ret = new LinkedList<>();
-	}
-	int os = 0;
-	while (os < rawData.length) {
-	    int len = 0;
-	    try {
-		len = PacketUtil.readInt(os, rawData);
-		byte[] tBytes = PacketUtil.readBytes(os + Integer.BYTES, len, rawData);
-		QMessage<?, ?>[] t = SerialUtil.readArray(SerialUtil.unZip(tBytes), QMessage.class);
-		if (action == null) {
-		    Collections.addAll(ret, t);
-		} else {
+    public void foreachMessageData(Consumer<Object[]> action) {
+	if (b == null && r != null) {
+	    int os = 0;
+	    while (os < r.length) {
+		int len = 0;
+		try {
+		    len = PacketUtil.autoReadNum(os, r).intValue();
+		    byte[] tBytes = PacketUtil.readBytes(os += r[os], len, r);
+		    Object[] t = SerialUtil.readArray(SerialUtil.unZip(tBytes), Map.class);
 		    action.accept(t);
+		    tBytes = null;
+		} catch (Exception e) {
+		    e.printStackTrace();
 		}
-		t = null;
-		tBytes = null;
-	    } catch (Exception e) {
-		e.printStackTrace();
+		if (len == 0) {
+		    break;
+		}
+		os += len;
 	    }
-	    if (len == 0) {
-		break;
-	    }
-	    os += len + Integer.BYTES;
+	} else {
+	    action.accept(b);
 	}
-	return ret;
+
     }
 
     // getter
 
-    public long getOffset() {
-	return offset;
+    public long getO() {
+	return o;
     }
 
-    public String getTopic() {
-	if (topic == null) {
-	    topic = new String(topicBytes);
-	}
-	return topic;
+    public String getT() {
+	return t;
     }
 
-    public byte[] getRawData() {
-	return rawData;
+    public Object[] getB() {
+
+	return b;
     }
 
-    public static QConsume of(String topic, long offset, byte[] rawData) {
+    public byte[] getR() {
+	return r;
+    }
+
+    public static QConsume ofRaw(String topic, long offset, byte[] rawData) {
 	QConsume ret = new QConsume();
-	ret.topic = topic;
-	ret.topicBytes = topic.getBytes();
-	ret.offset = offset;
-	ret.rawData = rawData;
+	ret.t = topic;
+	ret.o = offset;
+	ret.r = rawData;
+	return ret;
+    }
+
+    public static QConsume of(String topic, long offset, Object[] body) {
+	QConsume ret = new QConsume();
+	ret.t = topic;
+	ret.o = offset;
+	ret.b = body;
 	return ret;
     }
 
     @Override
     public void recycle() {
-	rawData = null;
-	topic = null;
-	topicBytes = null;
+	b = null;
+	t = null;
+    }
+
+    public QProduce toProduce() {
+	return QProduce.of(t, b);
     }
 
 }

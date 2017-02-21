@@ -3,6 +3,8 @@ package com.eyu.onequeue.proxy;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.HashSet;
+import java.util.Set;
 
 import javassist.ClassClassPath;
 import javassist.ClassPool;
@@ -29,7 +31,14 @@ public abstract class JavassistHepler {
     static {
 	classPool.insertClassPath(new ClassClassPath(JavassistHepler.class));
     }
+    public static Set<Method> OBJECT_METHODS = new HashSet<>();
 
+    static {
+	for (Method m : Object.class.getDeclaredMethods()) {
+	    OBJECT_METHODS.add(m);
+	}
+    }
+    
     public static CtClass getCtClass(String clzName) {
 	try {
 	    return classPool.get(clzName);
@@ -86,6 +95,23 @@ public abstract class JavassistHepler {
 	javassist.bytecode.annotation.Annotation annot = new javassist.bytecode.annotation.Annotation(anno.getName(), cp);
 	annoAttr.addAnnotation(annot);
 	return annoAttr;
+    }
+
+    /**
+     * 添加方法
+     */
+    public static void addMethod(CtClass ctClass, Method method, String body) {
+ 	CtMethod ctMethod = new CtMethod(getCtClass(method.getReturnType().getName()), method.getName(), toCtClassArray(method.getParameterTypes()), ctClass);
+	ctMethod.setModifiers(method.getModifiers());
+	try {
+	    if (method.getExceptionTypes().length != 0) {
+		ctMethod.setExceptionTypes(toCtClassArray(method.getExceptionTypes()));
+	    }
+	    ctMethod.setBody(body);
+	    ctClass.addMethod(ctMethod);
+	} catch (Exception e) {
+	    throw new RuntimeException(e);
+	}
     }
 
     /**

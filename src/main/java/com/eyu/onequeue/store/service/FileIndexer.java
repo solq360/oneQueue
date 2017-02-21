@@ -15,10 +15,9 @@ import java.util.function.Consumer;
 
 import com.eyu.onequeue.QMConfig;
 import com.eyu.onequeue.protocol.model.QConsume;
-import com.eyu.onequeue.protocol.model.QMessage;
-import com.eyu.onequeue.protocol.model.QProduce;
 import com.eyu.onequeue.store.model.QQuery;
 import com.eyu.onequeue.util.FileUtil;
+import com.eyu.onequeue.util.NumRecordUtil;
 import com.eyu.onequeue.util.PacketUtil;
 import com.eyu.onequeue.util.SerialUtil;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -39,14 +38,14 @@ public class FileIndexer {
     private LinkedHashMap<Long, FileOperate> indexers = new LinkedHashMap<>();
     private LinkedHashMap<Long, FileOperate> removeRecords = new LinkedHashMap<>();
 
-    ////////////////// 消息队列目的是 减少传输时数据量//////////////////////
+    ////////////////// 消息队列目的是 减少传输时数据量
+    ////////////////// 本来传输过程是zip压缩的，不用省硬盘空间//////////////////////
     @JsonIgnore
     private Object persistQueueLock = new Object();
     @JsonIgnore
     private List<Object> persistQueue;
 
     // 定时把消息队形写进文件底层，并做文件资源关闭
-
     public static FileIndexer of(String topic) {
 	FileIndexer ret = null;
 	final String rootPath = QMConfig.getInstance().getStoreRootPath(topic);
@@ -57,9 +56,7 @@ public class FileIndexer {
 	    ret = new FileIndexer();
 	    ret.topic = topic;
 	}
-	if (QMConfig.getInstance().STORE_QUEUE_OPEN) {
-	    ret.persistQueue = new ArrayList<>(QMConfig.getInstance().STORE_QUEUE_BUFFER_SIZE);
-	}
+	ret.persistQueue = new ArrayList<>(QMConfig.getInstance().STORE_QUEUE_BUFFER_SIZE);
 	return ret;
     }
 
@@ -69,8 +66,7 @@ public class FileIndexer {
 	persistFileIndexer();
     }
 
-    public void persist() {
-	wirteToBuffer();
+    public void clean() {
 	Set<Long> removes = new HashSet<>();
 	foreachAndLockFileOperate(fileOperate -> {
 	    fileOperate.persist();
@@ -81,8 +77,8 @@ public class FileIndexer {
 	    if (checkTime > QMConfig.getInstance().STORE_FILE_DELETE_INTERVAL) {
 		removes.add(fileOperate.getFileNum());
 	    }
-
 	});
+
 	if (!removes.isEmpty()) {
 	    synchronized (this) {
 		for (long key : removes) {
@@ -94,201 +90,157 @@ public class FileIndexer {
 		}
 	    }
 	}
+	if (NumRecordUtil.STORE_MEMORY.getValue() < QMConfig.getInstance().STORE_MEMORY_MAX_SIZE) {
+	    return;
+	}
+	foreachAndLockFileOperate(fileOperate -> {
+	    fileOperate.persist();
+	    final long checkTime = System.currentTimeMillis() - fileOperate.getLastOperate();
+	    if (checkTime > QMConfig.getInstance().STORE_MEMORY_GUARD_CLOSE_INTERVAL) {
+		FileUtil.close(fileOperate);
+	    }
+	});
+    }
+
+    public void persist() {
+	wirteToBuffer();
+	clean();
 	persistFileIndexer();
     }
 
-    public void write(byte[] bytes) {
-	FileOperate fileOperate = findLastFileIndexer(bytes.length);
+    public void write(byte[]... values) {
+	int len = 0;
+	for (byte[] bytes : values) {
+	    len += bytes.length;
+	}
+	FileOperate fileOperate = findLastFileIndexer(len);
 	synchronized (fileOperate) {
-	    fileOperate.wirte(bytes);
+	    fileOperate.wirte(values);
 	}
     }
 
     public void write(Object... messages) {
-	if (QMConfig.getInstance().STORE_QUEUE_OPEN) {
-	    synchronized (persistQueueLock) {
-		// 超过队列边界大小，切换操作
-		if (persistQueue.size() + messages.length > QMConfig.getInstance().STORE_QUEUE_PERSIST_SIZE * QMConfig.getInstance().STORE_QUEUE_BUFFER_SIZE) {
-		    wirteToBuffer();
-		}
-		Collections.addAll(persistQueue, messages);
+	synchronized (persistQueueLock) {
+	    // 超过队列边界大小，切换操作
+	    if (persistQueue.size() + messages.length > QMConfig.getInstance().STORE_QUEUE_PERSIST_SIZE * QMConfig.getInstance().STORE_QUEUE_BUFFER_SIZE) {
+		wirteToBuffer();
 	    }
-	} else {// 没把消息加入队列，直接写入底层
-	    write(SerialUtil.writeValueAsZipBytes(messages));
+	    Collections.addAll(persistQueue, messages);
 	}
     }
 
     public QConsume query(QQuery query) {
- 	List<byte[]> list = new LinkedList<>();
- 	AtomicLong offset = new AtomicLong();
- 	AtomicLong retAddSize = new AtomicLong();
+	List<Object> list = new LinkedList<>();
+	AtomicLong offset = new AtomicLong(query.getStartOffset());
+	AtomicLong retAddSize = new AtomicLong();
 
- 	final long start = query.getStartOffset();
- 	foreachAndLockFileOperate(fileOperate -> {
- 	    // 已读数据过滤
- 	    if (start >= fileOperate.toOffset()) {
- 		return;
- 	    }
- 	    // 防查询数据过大
- 	    if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
- 		return;
- 	    }
+	foreachAndLockFileOperate(fileOperate -> {
+	    // 已读数据过滤
+	    if (offset.get() > fileOperate.toAbsoluteOffset()) {
+		return;
+	    }
+	    // 防查询数据过大
+	    if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
+		return;
+	    }
 
- 	    fileOperate.readyReadNext(start);
- 	    long querySize = 0;
- 	    while (true) {
- 		byte[] data = null;
- 		try {
- 		    data = fileOperate.next();
- 		} catch (Exception e) {
- 		    e.printStackTrace();
- 		    break;
- 		}
- 		if (data == null) {
- 		    break;
- 		}
+	    int queryStart = fileOperate.readyReadNext(offset.get());
+	    while (true) {
+		byte[] data = null;
+		try {
+		    data = fileOperate.next();
+		} catch (Exception e) {
+		    e.printStackTrace();
+		    break;
+		}
+		if (data == null) {
+		    break;
+		}
 
- 		list.add(data);
- 		int addCount = data.length + 4;
- 		querySize += addCount;
- 		retAddSize.addAndGet(addCount);
+		list.addAll(SerialUtil.readList(SerialUtil.unZip(data), Map.class));
+		int addCount = data.length + 4;
+		queryStart += addCount;
+		retAddSize.addAndGet(addCount);
 
- 		data = null;
- 		// 防查询数据过大
- 		if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
- 		    break;
- 		}
- 	    }
- 	    long t = fileOperate.getFiexdOffset() + querySize;
- 	    if (t > offset.get()) {
- 		offset.set(t);
- 	    }
- 	});
- 	
- 	int len = 0;
- 	for (byte[] data : list) {
- 	    len += data.length + 4;
- 	}
- 	byte[] rawData = new byte[len];
- 	int os = 0;
- 	for (byte[] data : list) {
- 	    PacketUtil.writeInt(os, data.length, rawData);
- 	    os += 4;
- 	    PacketUtil.writeBytes(os, data, rawData);
- 	    os += data.length;
- 	}
- 	list.clear();
+		data = null;
+		// 防查询数据过大
+		if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
+		    break;
+		}
+	    }
+	    queryStart += fileOperate.getFiexdOffset();
+	    if (queryStart > offset.get()) {
+		offset.set(queryStart);
+	    }
+	});
+	return QConsume.of(topic, offset.get(), list.toArray(new Object[list.size()]));
+    }
 
- 	return QConsume.of(topic, offset.get(), rawData);
-     }
+    public QConsume queryForRaw(QQuery query) {
+	List<byte[]> list = new LinkedList<>();
+	AtomicLong offset = new AtomicLong(query.getStartOffset());
+	AtomicLong retAddSize = new AtomicLong();
 
-    
-    public QProduce queryForProduce(QQuery query) {
- 	List<QMessage<?, ?>> list = new LinkedList<>();
- 	AtomicLong offset = new AtomicLong();
- 	AtomicLong retAddSize = new AtomicLong();
+	foreachAndLockFileOperate(fileOperate -> {
+	    // 已读数据过滤
+	    if (offset.get() > fileOperate.toAbsoluteOffset()) {
+		return;
+	    }
+	    // 防查询数据过大
+	    if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
+		return;
+	    }
+	    int queryStart = fileOperate.readyReadNext(offset.get());
+	    while (true) {
+		byte[] data = null;
+		try {
+		    data = fileOperate.next();
+		} catch (Exception e) {
+		    e.printStackTrace();
+		    break;
+		}
+		if (data == null) {
+		    break;
+		}
 
- 	final long start = query.getStartOffset();
+		list.add(data);
+		int addCount = data.length + 4;
+		queryStart += addCount;
+		retAddSize.addAndGet(addCount);
 
- 	foreachAndLockFileOperate(fileOperate -> {
- 	    // 已读数据过滤
- 	    if (start >= fileOperate.toOffset()) {
- 		return;
- 	    }
- 	    // 防查询数据过大
- 	    if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
- 		return;
- 	    }
+		data = null;
+		// 防查询数据过大
+		if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
+		    break;
+		}
+	    }
+	    queryStart += fileOperate.getFiexdOffset();
 
- 	    fileOperate.readyReadNext(start);
- 	    long querySize = 0;
- 	    while (true) {
- 	 	byte[] data = null;
- 		try {
- 		    data = fileOperate.next();
- 		} catch (Exception e) {
- 		    e.printStackTrace();
- 		    break;
- 		}
- 		if (data == null) {
- 		    break;
- 		}
+	    if (queryStart > offset.get()) {
+		offset.set(queryStart);
+	    }
+	});
 
- 		list.add(SerialUtil.readZipValue(data, QMessage.class));
- 		int addCount = data.length + 4;
- 		querySize += addCount;
- 		retAddSize.addAndGet(addCount);
+	int len = 0;
+	for (byte[] data : list) {
+	    len += PacketUtil.getAutoWriteLen(data.length) + data.length;
+	}
+	byte[] rawData = new byte[len];
+	int os = 0;
+	for (byte[] data : list) {
+	    int autoLen = PacketUtil.autoWriteNum(os, data.length, rawData);
+	    PacketUtil.writeBytes(os += autoLen, data, rawData);
+	    os += data.length;
+	}
+	list.clear();
 
- 		data = null;
- 		// 防查询数据过大
- 		if (retAddSize.get() >= QMConfig.getInstance().STORE_QUEUE_MAX_SIZE) {
- 		    break;
- 		}
- 	    }
- 	    long t = fileOperate.getFiexdOffset() + querySize;
- 	    if (t > offset.get()) {
- 		offset.set(t);
- 	    }
- 	});
- 	QProduce ret = QProduce.of(topic, list.toArray(new QMessage[list.size()])); 
- 	ret.setOffset(offset.get());
- 	return ret; 
-     }
-
-    // public QResult queryForRaw(QQuery query) {
-    // List<byte[]> list = new LinkedList<>();
-    // AtomicLong offset = new AtomicLong();
-    //
-    // final long start = query.getStartOffset();
-    // foreachAndLockFileOperate(fileOperate -> {
-    // // 已读数据过滤
-    // if (start >= fileOperate.toOffset()) {
-    // return;
-    // }
-    // // 防查询数据过大
-    // if ((offset.get() - start) >= QMServerConfig.STORE_QUEUE_MAX_SIZE) {
-    // return;
-    // }
-    //
-    // fileOperate.readyReadNext(start);
-    // byte[] data = null;
-    // try {
-    // data = fileOperate.nextAll();
-    // } catch (Exception e) {
-    // e.printStackTrace();
-    // }
-    // if (data == null) {
-    // return;
-    // }
-    //
-    // list.add(data);
-    // long t = fileOperate.getFiexdOffset() + data.length;
-    // if (t > offset.get()) {
-    // offset.set(t);
-    // }
-    // });
-    //
-    // int len = 0;
-    // for (byte[] data : list) {
-    // len += data.length + 4;
-    // }
-    // byte[] rawData = new byte[len];
-    // int os = 0;
-    // for (byte[] data : list) {
-    // PacketUtil.writeInt(os, data.length, rawData);
-    // os += 4;
-    // PacketUtil.writeBytes(os, data, rawData);
-    // os += data.length;
-    // }
-    //
-    // return QResult.ofRaw(topic, offset.get(), rawData);
-    // }
+	return QConsume.ofRaw(topic, offset.get(), rawData);
+    }
 
     //////////////////////////////////////////////////////////////////////
 
     private void foreachAndLockFileOperate(Consumer<FileOperate> action) {
 	Map<Long, FileOperate> indexers = getIndexers();
-	// indexers.values().parallelStream().forEach(action);
 	for (Entry<Long, FileOperate> r : indexers.entrySet()) {
 	    final FileOperate fileOperate = r.getValue();
 	    synchronized (fileOperate) {
@@ -302,9 +254,6 @@ public class FileIndexer {
     }
 
     private void wirteToBuffer() {
-	if (!QMConfig.getInstance().STORE_QUEUE_OPEN) {
-	    return;
-	}
 	byte[] bytes = null;
 	synchronized (persistQueueLock) {
 	    if (persistQueue.isEmpty()) {
@@ -328,12 +277,16 @@ public class FileIndexer {
 	FileOperate ret = indexers.get(ai.get());
 	while (ret == null || (ret.getSize() + addSzie) >= QMConfig.getInstance().STORE_SPLIT_SIZE) {
 	    long lastFileIndexer = ai.incrementAndGet();
+	    if (ret != null) {
+		offset = ret.toAbsoluteOffset();
+	    }
 	    ret = indexers.get(lastFileIndexer);
 	    if (ret == null) {
 		ret = FileOperate.of(topic, offset, lastFileIndexer);
 		indexers.put(lastFileIndexer, ret);
 	    }
 	}
+	offset = ret.toAbsoluteOffset();
 	return ret;
     }
 

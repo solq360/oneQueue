@@ -21,6 +21,7 @@ import com.eyu.onequeue.socket.model.IQReceiveHandler;
 import com.eyu.onequeue.util.NettyUtil;
 import com.eyu.onequeue.util.NettyUtil.CLOSE_SOURCE;
 import com.eyu.onequeue.util.PoolUtil;
+import com.eyu.onequeue.util.QCodeUtil;
 
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
@@ -132,7 +133,7 @@ public abstract class QDispenseHandler implements IQService {
 	} catch (QSocketException e) {
 	    // socket异常 关闭连接
 	    packet.responseCode(e.getCode());
-	    LOGGER.error("QSocketException  code {} error : {}", e.getCode(), e);
+	    LOGGER.error("QSocketException  msg {} error : {}", QCodeUtil.getDes( e.getCode()), e);
 	    if (response) {
 		ChannelFuture future = ctx.channel().writeAndFlush(packet);
 		future.addListener(new GenericFutureListener<Future<? super Void>>() {
@@ -148,7 +149,7 @@ public abstract class QDispenseHandler implements IQService {
 	} catch (QException e) {
 	    // 业务异常 响应失败
 	    packet.responseCode(e.getCode());
-	    LOGGER.error("QException  code {} error : {}", e.getCode(), e);
+	    LOGGER.error("QException  msg {} error : {}",QCodeUtil.getDes( e.getCode()), e);
 	} catch (Exception e) {
 	    // 未知异常 响应失败
 	    packet.responseCode(QCode.ERROR_UNKNOWN);

@@ -9,10 +9,10 @@ import org.slf4j.LoggerFactory;
 
 import com.eyu.onequeue.QMConfig;
 import com.eyu.onequeue.protocol.model.QConsume;
-import com.eyu.onequeue.protocol.model.QProduce;
 import com.eyu.onequeue.store.model.IQStore;
 import com.eyu.onequeue.store.model.IQStoreService;
 import com.eyu.onequeue.store.model.QQuery;
+import com.eyu.onequeue.util.NumRecordUtil;
 import com.eyu.onequeue.util.PoolUtil;
 
 /***
@@ -67,12 +67,6 @@ public class QStoreService implements IQStoreService {
     public QConsume query(QQuery query) {
 	IQStore store = getStore(query.getTopic());
 	return store.query(query);
-    }
-
-    @Override
-    public QProduce queryForProduce(QQuery query) {
-	IQStore store = getStore(query.getTopic());
-	return store.queryForProduce(query);
     }
 
     @Override
@@ -131,6 +125,11 @@ public class QStoreService implements IQStoreService {
 	    useStoreCount++;
 	}
 	return ret;
+    }
+
+    @Override
+    public long getUseMemoryCount() {
+	return NumRecordUtil.STORE_MEMORY.getValue();
     }
 
 }

@@ -10,7 +10,6 @@ public class TestProjectWorkload {
     public static void main(String[] args) {
 	Set<String> include = new HashSet<>();
 	include.add(".java");
-	CodeTotal.calculate("E:/java/panda_proxy/src",include);
-	CodeTotal.calculate("E:/java/panda_server/src",include);
-    }
+	CodeTotal.calculate("E:/java/oneQueue",include);
+     }
 }

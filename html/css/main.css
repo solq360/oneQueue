@@ -1,0 +1,233 @@
+body, div, dl, dt, dd, ul, ol, li, h1, h2, h3, h4, h5, h6, pre, form, fieldset, input, textarea, p, blockquote, th, td {
+    padding: 0;
+    margin: 0;
+}
+#head,#body,#foot{
+	width:100%;
+}
+html{font-size:62.5%;} 
+
+/* @media only screen and (min-width: 1024px){
+	#head,#body,#foot{
+		width:1000px;
+	}
+}
+@media only screen and (min-width: 400px) and (max-width: 1024px){
+	#head,#body,#foot{
+		width:900px;
+	}
+}
+@media only screen and (max-width: 400px){
+	#head,#body,#foot{
+		width:400px;
+	}
+} */
+#head{
+	background-color : #FF1100;
+	height:30%;
+}
+#body{
+  	
+}
+#body div{
+}
+#foot{
+	background-color : #fff;
+ 	height:8%;
+ 	font-size:20px;font-size:2rem ;
+	position:fixed;
+	bottom:0px;
+}
+#foot div{
+	height:100%;
+ 	line-height:180%;
+}
+/*shoppingCart*/
+#settle{
+	
+}
+#shoppingCart table{
+	height:70%;
+	width:100%;
+	overflow: hidden;
+}
+#shoppingCart thead ,
+#shoppingCart tfoot{
+	display: block;
+}
+#shoppingCart tbody{
+	display: block;
+	overflow: auto;
+	height:80%;
+}
+#shoppingCart tr{
+	width:100%;
+ }
+#shoppingCart td,
+#shoppingCart th{
+}
+
+#recordsNav{
+}
+
+.preItem{
+ 	min-height:120px;
+}
+
+.preItemImg{
+	width:100px;
+ 	padding:2px;
+	vertical-align: middle;
+}
+.preItemInfo{
+ 	padding:10px;
+}
+/*footTab*/
+.footTabRclass{
+	background:red;
+}
+.footTabTclass{
+	background:blue;
+}
+/*head*/
+#head{
+}
+#search{
+	background-color:red;
+}
+#searchBody{
+	width:65%;
+	margin:0px auto;
+	display:block;
+	vertical-align: middle;
+	text-align:center;
+	padding:5px;
+	background-color:#fff;
+}
+#search span{
+	
+}
+#search img {
+	width:15px;
+	vertical-align: middle;
+}
+#adlist img{
+	height:120px;
+}
+
+
+
+/*home*/
+#home{
+ 
+}
+
+#itemList{
+ 
+}
+.item{
+	max-width:49%;
+	float:left;
+	display:block;
+ 	border-top:1px solid #000;
+	border-left:1px solid #000;
+}
+.itemRight{
+	border-right:1px solid #000;
+}
+
+#loadDom{
+ 	float:left;
+	width:99%;
+	vertical-align: middle;
+	text-align:center;
+ 	margin-top:1px;
+	margin-bottom:50px;
+	height:30px;
+}
+
+.item img{
+	max-width:80%;
+	padding:15px;
+}
+
+.item p.itemTitle{
+ 	padding-top:5px;
+	padding-bottom:5px;
+}
+.itemProgressTitle{
+}
+.bntAddShop{
+	float:left;
+	margin-top:5px;
+	margin-left:10px;
+}
+.bntBuyShop{
+/* 	position:absolute;
+	bottom:10px;
+	right:19px; */
+	float:right;
+	margin-top:5px;
+	margin-right:10px;
+}
+
+/**common*/
+.fz12{
+	font-size:12px;font-size:1.2rem ;
+}
+.fz10{
+	font-size:10px;font-size:1rem ;
+}
+.textCenter{
+	vertical-align: middle;
+	text-align:center;
+}
+
+.divFlex div{
+	-webkit-box-flex:1;-moz-box-flex:1;box-flex:1;
+}
+.layoutH{
+	display:-webkit-box;display:-moz-box;display:box;
+	-webkit-box-orient:horizontal;-moz-box-orient:horizontal;box-orient:horizontal;
+}
+.layoutV{
+	display:-webkit-box;display:-moz-box;display:box;
+	-webkit-box-orient:vertical;-moz-box-orient:vertical;box-orient:vertical;
+}
+.flex1{
+	-webkit-box-flex:1;-moz-box-flex:1;box-flex:1;
+}
+.flex2{
+	-webkit-box-flex:2;-moz-box-flex:2;box-flex:2;
+}
+.editInput label{
+	vertical-align: bottom;
+	margin-bottom:5px;
+}
+.editInput input,.editInput button{
+	padding:2px;
+	min-height:25px;
+	vertical-align: bottom;
+	text-align:center;
+	margin-top:5px;
+}
+.editInput input{
+	width:40px;
+	border:1px solid #111;
+}
+.editInput button{
+	width:25px;
+}
+.hidden{
+	display:none;
+}
+.banner { position: relative;  text-align: center;}
+.banner li { list-style: none; }
+.banner ul li { float: left; }
+.dots { position: absolute; left: 0; right: 0; bottom: 10px;}
+
+.dots li {
+	display: inline-block; 	width: 10px; 	height: 10px; 	margin: 0 4px; 	text-indent: -999em; 	border: 2px solid #fff; 	border-radius: 6px; 
+	cursor: pointer; 	opacity: .4; 	-webkit-transition: background .5s, opacity .5s; 
+	-moz-transition: background .5s, opacity .5s; 	transition: background .5s, opacity .5s;}
+.dots li.active {	background: #fff;	opacity: 1;}

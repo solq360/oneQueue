@@ -11,6 +11,7 @@ public interface QCode {
     public final short MODEL_MESSAGE = 1;
     public final short MODEL_JSON = 2;
     public final short MODEL_SOCKET = 3;
+    public final short MODEL_ENHANCE_PROXY = 4;
 
     @Des("完成")
     public final short SUCCEED = 0;
@@ -48,7 +49,23 @@ public interface QCode {
     public final short SOCKET_ERROR_ENCODE = toCode(MODEL_SOCKET, 8);
     @Des("包头标识不对")
     public final short SOCKET_ERROR_PCKET_FLAG = toCode(MODEL_SOCKET, 9);
-
+    @Des("增强代码失败")
+    public final short ENHANCE_ERROR = toCode(MODEL_ENHANCE_PROXY, 1);
+    @Des("rpc不支持参数类型")
+    public final short ENHANCE_ERROR_RPC_NONSUPPORT_TYPE = toCode(MODEL_ENHANCE_PROXY, 2);
+    @Des("rpc调用编码出错")
+    public final short ENHANCE_ERROR_RPC_INVOKE = toCode(MODEL_ENHANCE_PROXY, 3);
+    @Des("rpc发送编码出错")
+    public final short ENHANCE_ERROR_RPC_SEND = toCode(MODEL_ENHANCE_PROXY, 4);
+    @Des("rpc参数不允许为NULL")
+    public final short ENHANCE_ERROR_RPC_PARAM_EMPTY = toCode(MODEL_ENHANCE_PROXY, 5);
+    @Des("rpc未找到调用model")
+    public final short ENHANCE_ERROR_RPC_NOFIND_MODEL = toCode(MODEL_ENHANCE_PROXY,6);
+    @Des("rpc参数非法")
+    public final short ENHANCE_ERROR_RPC_PARAM_ILLEGITMACY = toCode(MODEL_ENHANCE_PROXY,7);
+    @Des("rpc没有调用服务")
+    public final short ENHANCE_ERROR_RPC_NOFIDN_SERVICE = toCode(MODEL_ENHANCE_PROXY,8);
+    
     /**
      * 防止冲突，以模块号区分
      **/

@@ -96,19 +96,16 @@ public class Subscribe {
 	if (nodeIsEmpty()) {
 	    return;
 	}
+	 QConsume consume = storeService.query(QQuery.of(topic, offset));
+	    if (offset >= consume.getO() || consume.toBytes().length == 0) {
+		return;
+	    }
 	// server push
 	if (QMConfig.getInstance().SERVER_MODEL) {
-	    QConsume consume = storeService.query(QQuery.of(topic, offset));
-	    if (offset >= consume.getOffset() || consume.toBytes().length == 0) {
-		return;
-	    }
-	    push(QPacket.of(consume), consume.getOffset());
+	    push(QPacket.of(consume), consume.getO());
 	} else {
 	    // client again send transfer error
-	    QProduce produce = storeService.queryForProduce(QQuery.of(topic, offset));
-	    if (offset >= produce.getOffset() || produce.getB() == null || produce.getB().length == 0) {
-		return;
-	    }
+	    QProduce produce = consume.toProduce();
 	    push(QPacket.of(produce), produce.getOffset());
 	}
     }

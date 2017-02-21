@@ -21,6 +21,6 @@ public interface IProxy {
 	/**
 	 * 注册增强服务
 	 */
-	public void register(Class<?> clz, IEnhanceService  service,boolean isTry);
+	public void register(Class<?> clz, IEnhanceService  service);
 
 }

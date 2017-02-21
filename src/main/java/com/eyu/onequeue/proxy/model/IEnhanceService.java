@@ -29,8 +29,7 @@ public interface IEnhanceService {
     /** 过滤method */
     public boolean matches(Method method);
 
-    public void initMetadata();
-
+    public void initMetadata(Class<?> clz);
     /** 获取类元信息 */
-    public ClassMetadata getClassMetadata();
+    public ClassMetadata getClassMetadata(Class<?> clz);
 }

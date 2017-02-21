@@ -1,5 +1,6 @@
 package com.eyu.onequeue.util;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.function.Consumer;
@@ -30,13 +31,14 @@ public class ReflectUtil {
 	for (Method method : methods) {
 	    action.accept(method);
 	}
+	for (Class<?> superIfc : clazz.getInterfaces()) {
+	    foreachMethods(superIfc, action);
+	}
+
 	if (clazz.getSuperclass() != null) {
 	    foreachMethods(clazz.getSuperclass(), action);
-	} else if (clazz.isInterface()) {
-	    for (Class<?> superIfc : clazz.getInterfaces()) {
-		foreachMethods(superIfc, action);
-	    }
 	}
+
     }
 
     public static void foreachFields(Class<?> clz, Consumer<Field> action) {
@@ -66,5 +68,65 @@ public class ReflectUtil {
 	} catch (Exception e) {
 	    e.printStackTrace();
 	}
+    }
+
+    public static <A extends Annotation> A getAnno(Class<?> clz, Class<A> annotationClass) {
+	A anno = clz.getAnnotation(annotationClass);
+	FLAG: while (anno == null) {
+	    for (Class<?> i : clz.getInterfaces()) {
+		anno = i.getAnnotation(annotationClass);
+		if (anno != null) {
+		    break FLAG;
+		}
+	    }
+	    clz = clz.getSuperclass();
+	    if (clz == null) {
+		break;
+	    }
+	    anno = clz.getAnnotation(annotationClass);
+	}
+	return anno;
+    }
+
+    public static Class<?> getInterfaceForAnno(Class<?> clz, Class<? extends Annotation> annotationClass) {
+	Class<?> ret = null;
+	Annotation anno = clz.getAnnotation(annotationClass);
+	if (anno != null && clz.isInterface()) {
+	    return clz;
+	}
+	FLAG: while (anno == null) {
+	    for (Class<?> i : clz.getInterfaces()) {
+		anno = i.getAnnotation(annotationClass);
+		if (anno != null && i.isInterface()) {
+		    ret = i;
+		    break FLAG;
+		}
+	    }
+	    clz = clz.getSuperclass();
+	    if (clz == null) {
+		break;
+	    }
+	    anno = clz.getAnnotation(annotationClass);
+	}
+	return ret;
+    }
+
+    public static Method getMethod(Class<?> target, String name) {
+	Method[] methods = target.getDeclaredMethods();
+	for (Method method : methods) {
+	    if (method.getName().equals(name)) {
+		return method;
+	    }
+	}
+	if (target.getSuperclass() != null) {
+	    return getMethod(target.getSuperclass(), name);
+	}
+	if (target.isInterface()) {
+	    for (Class<?> superIfc : target.getInterfaces()) {
+		return getMethod(superIfc, name);
+	    }
+	}
+
+	return null;
     }
 }

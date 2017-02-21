@@ -18,11 +18,11 @@ public class TestMessageObject {
 	ret.value = new HashMap<>();
 	return ret;
     }
-    
+
     public static TestMessageObject ofBig(int count) {
 	TestMessageObject ret = of();
-	for(int i=0;i<count;i++){
-	    ret.value.put(""+i, ""+i);
+	for (int i = 0; i < count; i++) {
+	    ret.value.put("" + i, "" + i);
 	}
 	return ret;
     }
